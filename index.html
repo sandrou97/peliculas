@@ -3,6 +3,14 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="theme-color" content="#0f1115">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Pelis">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" href="icon-192.png">
+<script>try{var _p=localStorage.getItem("peli_theme")||"auto";document.documentElement.dataset.theme=_p==="auto"?(matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"):_p}catch(e){}</script>
 <title>Nuestras películas</title>
 <style>
   :root{--bg:#0f1115;--card:#181b22;--card2:#1f232c;--text:#eceef2;--muted:#8b93a3;--accent:#f5b83d;--danger:#e5484d;--line:#2a2f3a}
@@ -10,14 +18,13 @@
   body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
   button,input,select,textarea{font:inherit;color:inherit}
   .hidden{display:none!important}
-  header{position:sticky;top:0;z-index:5;background:rgba(15,17,21,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  header{position:sticky;top:0;z-index:5;background:var(--hdr);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
   header h1{font-size:18px;margin:0;flex:1;min-width:140px}
   .who{font-size:13px;color:var(--muted);cursor:pointer}
   .btn{background:var(--accent);color:#111;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
   .btn.ghost{background:var(--card2);color:var(--text)}
   .btn.danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
   input,select,textarea{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
-  input[type=date]{color-scheme:dark}
   main{max-width:1180px;margin:0 auto;padding:16px}
   .layout{display:grid;grid-template-columns:270px 1fr;gap:20px;align-items:start}
   aside{position:sticky;top:70px;max-height:calc(100vh - 90px);overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:12px}
@@ -102,6 +109,58 @@
   .err{color:var(--danger);font-size:14px;margin-top:10px}
   .actions{display:flex;gap:8px;margin-top:14px}.actions .btn{flex:1}
   .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#111;padding:10px 18px;border-radius:999px;font-weight:600;z-index:50}
+  /* ---- tema ---- */
+  :root{--hdr:rgba(15,17,21,.92);--b:#6ea8fe;--ok:#3ecf8e}
+  html{color-scheme:dark}
+  [data-theme=light]{--bg:#f4f5f8;--card:#ffffff;--card2:#eef0f5;--text:#171a21;--muted:#667085;--line:#dde1ea;--hdr:rgba(244,245,248,.92);--b:#2f6fe0;color-scheme:light}
+  /* ---- menú ---- */
+  .menu{position:absolute;right:12px;top:100%;margin-top:6px;background:var(--card);border:1px solid var(--line);border-radius:12px;padding:6px;min-width:250px;z-index:40;box-shadow:0 12px 30px rgba(0,0,0,.35)}
+  .menu button{display:block;width:100%;text-align:left;background:none;border:0;padding:10px 12px;border-radius:8px;cursor:pointer;color:var(--text)}
+  .menu button:hover{background:var(--card2)}
+  .menu hr{border:0;border-top:1px solid var(--line);margin:4px 0}
+  /* ---- pestañas, juegos, récords ---- */
+  .tabs{display:flex;gap:6px;margin:10px 0;flex-wrap:wrap}
+  .tabs button{background:var(--card2);border:1px solid var(--line);color:var(--text);border-radius:999px;padding:6px 12px;cursor:pointer;font-size:13px}
+  .tabs button.on{background:var(--accent);color:#111;border-color:var(--accent);font-weight:700}
+  .vsHead{display:flex;justify-content:space-between;align-items:center;font-weight:700;margin-top:6px}
+  .vs{display:flex;height:26px;border-radius:8px;overflow:hidden;font-size:12px;font-weight:700;margin:8px 0}
+  .vs div{display:flex;align-items:center;justify-content:center;color:#111;min-width:0;overflow:hidden}
+  .vs .a{background:var(--accent)}.vs .t{background:var(--card2);color:var(--text)}.vs .b{background:var(--b);color:#fff}
+  .opt{display:block;width:100%;text-align:left;background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:12px;margin-top:8px;cursor:pointer}
+  .opt.ok{border-color:var(--ok);background:rgba(62,207,142,.18)}
+  .opt.bad{border-color:var(--danger);background:rgba(229,72,77,.18)}
+  .rc{background:var(--card2);border-radius:12px;padding:10px 12px;margin-top:8px}
+  .rc small{color:var(--muted)}.rc b{color:var(--accent)}
+  .li{display:flex;justify-content:space-between;gap:8px;font-size:14px;padding:6px 0;border-top:1px solid var(--line)}
+  .li small{color:var(--muted)}
+  h4.sec{margin:16px 0 4px;font-size:13px;color:var(--muted);text-transform:uppercase;letter-spacing:.04em}
+  .int{display:flex;justify-content:space-between;align-items:center;margin:4px 0}
+  .star{background:none;border:0;font-size:26px;color:var(--line);cursor:pointer;padding:0 2px}
+  .star.on{color:var(--accent)}.star:disabled{cursor:default}
+  .saga{background:var(--card2);border-radius:12px;padding:10px 12px;margin-top:10px}
+  .saga h4{margin:0 0 6px}
+  .part{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:5px 0;border-top:1px solid var(--line);font-size:13px}
+  .part .btn{padding:4px 8px;font-size:12px}
+  a.lnk{color:var(--accent);text-decoration:none}
+  /* ---- resumen del año ---- */
+  .wrapov{align-items:center;justify-content:center;background:rgba(0,0,0,.85)}
+  .wrap{position:relative;width:min(420px,100vw);height:min(760px,100vh);overflow:hidden;color:#fff;display:flex;flex-direction:column}
+  @media(min-width:700px){.wrap{border-radius:22px}}
+  .wprog{display:flex;gap:4px;padding:12px 14px 0}
+  .wprog i{flex:1;height:3px;border-radius:2px;background:rgba(255,255,255,.3)}.wprog i.on{background:#fff}
+  .wtop{display:flex;justify-content:space-between;align-items:center;padding:8px 14px;position:relative;z-index:3}
+  .wtop select{width:auto;background:rgba(0,0,0,.25);border-color:rgba(255,255,255,.3);color:#fff;padding:6px 10px}
+  .wtop select option{color:#111}
+  .wtop button{background:rgba(0,0,0,.25);border:0;color:#fff;width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer}
+  .wbody{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:10px 28px 40px;gap:8px}
+  .wbody .big{font-size:84px;font-weight:800;line-height:1}
+  .wbody .big.sm2{font-size:38px;line-height:1.1}
+  .wbody h3{margin:6px 0;font-size:24px}
+  .wbody p{margin:0;font-size:17px;opacity:.92}
+  .wbody p.sm{font-size:14px;opacity:.8}
+  .wbody img{width:150px;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  .wnav{position:absolute;top:96px;bottom:0;border:0;background:transparent;cursor:pointer;z-index:2}
+  .wnav.l{left:0;width:35%}.wnav.r{right:0;width:65%}
 </style>
 </head>
 <body>
@@ -121,11 +180,25 @@
 <div id="app" class="hidden">
   <header>
     <h1>🎬 Nuestras películas</h1>
-    <span class="who" id="whoLabel" title="Cambiar de usuario / salir"></span>
-    <button class="btn ghost" id="upBtn">🎟️ Estrenos</button>
-    <button class="btn ghost" id="importBtn">⬆ Importar</button>
     <button class="btn" id="addBtn">+ Añadir</button>
+    <button class="btn ghost" id="menuBtn" aria-label="Menú">☰</button>
+    <div id="menu" class="menu hidden">
+      <button id="upBtn">🎟️ Próximos estrenos</button>
+      <button id="gamesBtn">🎮 Juegos: duelo, adivina, quiz</button>
+      <button id="wrapBtn">🎁 Resumen del año</button>
+      <button id="recBtn">🏆 Récords, cines, gasto y sagas</button>
+      <hr>
+      <button id="importBtn">⬆ Importar Excel</button>
+      <button id="backupBtn">💾 Copia de seguridad (JSON)</button>
+      <button id="csvBtn">📊 Exportar a Excel (CSV)</button>
+      <button id="restoreBtn">♻️ Restaurar copia</button>
+      <hr>
+      <button id="themeBtn">🌓 Tema: Auto</button>
+      <button id="installBtn">📲 Instalar en el móvil</button>
+      <button id="whoLabel" title="Cambiar de usuario / salir"></button>
+    </div>
   </header>
+  <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
   <main>
     <div class="layout">
       <aside>
@@ -135,12 +208,14 @@
         </details>
       </aside>
       <section>
+        <div id="soon" class="banner hidden" style="margin:0 0 12px"></div>
         <div class="tools">
           <input id="filter" placeholder="Buscar (título, cine, director…)">
           <select id="year"></select>
           <label><input type="checkbox" id="showWish" checked> Pendientes</label>
           <select id="sort">
             <option value="watched">Por fecha</option>
+            <option value="interest">Más interés (pendientes)</option>
             <option value="recent">Añadidas recientemente</option>
             <option value="avg">Mejor nota media</option>
             <option value="title">Título A-Z</option>
@@ -174,9 +249,36 @@
     </div>
     <div id="upList"></div>
     <div id="upStatus" class="sub" style="margin-top:8px"></div>
-    <div class="actions"><button class="btn ghost" id="upMore">Cargar más</button><button class="btn ghost" id="upClose">Cerrar</button></div>
+    <div class="actions"><button class="btn ghost" id="upMore">Cargar más</button><button class="btn ghost" id="icsBtn">📅 Calendario</button><button class="btn ghost" id="upClose">Cerrar</button></div>
   </div>
 </div>
+
+<!-- Modal: juegos -->
+<div id="gamesModal" class="overlay hidden">
+  <div class="sheet wide">
+    <h2>🎮 Juegos</h2>
+    <div class="tabs" id="gamesTabs">
+      <button data-t="duel" class="on">⚔️ Duelo</button><button data-t="guess">🎯 Adivina la nota</button><button data-t="quiz">🧠 Quiz</button>
+    </div>
+    <div id="gamesBody"></div>
+    <div class="actions"><button class="btn ghost" id="gamesClose">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Modal: récords -->
+<div id="recModal" class="overlay hidden">
+  <div class="sheet wide">
+    <h2>🏆 Récords y más</h2>
+    <div class="tabs" id="recTabs">
+      <button data-t="rec" class="on">🏅 Récords</button><button data-t="cines">📍 Cines</button><button data-t="gasto">💶 Gasto</button><button data-t="sagas">🎞️ Sagas</button>
+    </div>
+    <div id="recBody"></div>
+    <div class="actions"><button class="btn ghost" id="recClose">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Resumen del año -->
+<div id="wrapModal" class="overlay wrapov hidden"></div>
 
 <!-- Modal: importar -->
 <div id="importModal" class="overlay hidden">
@@ -277,6 +379,7 @@ async function fetchDetails(id) {
     genres: (d.genres || []).map(g => g.name),
     director: (d.credits?.crew || []).filter(c => c.job === "Director").map(c => c.name).join(", "),
     runtime: d.runtime || null,
+    collection: d.belongs_to_collection ? { id: d.belongs_to_collection.id, name: d.belongs_to_collection.name } : null,
   };
 }
 // Rellena la ficha de las películas antiguas que aún no la tienen
@@ -284,9 +387,13 @@ const backfilled = new Set();
 async function backfill() {
   if (TMDB_API_KEY === "PEGA_AQUI") return;
   for (const m of movies) {
-    if (m.releaseDate !== undefined || backfilled.has(m.id)) continue;
+    if ((m.releaseDate !== undefined && m.collection !== undefined) || backfilled.has(m.id)) continue;
     backfilled.add(m.id);
-    try { await updateDoc(doc(moviesCol, m.id), await fetchDetails(m.id)); }
+    try {
+      const d = await fetchDetails(m.id);
+      // si ya tenía ficha, solo se añade la saga (sin tocar la fecha de estreno guardada)
+      await updateDoc(doc(moviesCol, m.id), m.releaseDate !== undefined ? { collection: d.collection } : d);
+    }
     catch (e) { console.warn("No se pudo completar", m.title, e); }
   }
 }
@@ -336,6 +443,7 @@ function render() {
   list.sort((a, b) => {
     if (sort === "avg") return (avgOf(b) ?? -1) - (avgOf(a) ?? -1);
     if (sort === "title") return (a.title || "").localeCompare(b.title || "", "es");
+    if (sort === "interest") return ((b.wish ? isum(b) : -1) - (a.wish ? isum(a) : -1)) || dateOf(b).localeCompare(dateOf(a));
     if (sort === "watched") return dateOf(b).localeCompare(dateOf(a));
     return (b.createdAt?.seconds ?? 9e9) - (a.createdAt?.seconds ?? 9e9);
   });
@@ -348,7 +456,7 @@ function render() {
     const a = avgOf(m);
     const mini = m.wish ? "" : PEOPLE.map(p => `${esc(p.name)}: ${fmt(m.ratings?.[p.id])}`).join(" · ");
     const pills = (m.wish
-        ? [m.releaseDate ? "🎯 Estreno " + fmtDate(m.releaseDate) : "🎯 Pendiente"]
+        ? [m.releaseDate ? "🎯 Estreno " + fmtDate(m.releaseDate) : "🎯 Pendiente", isum(m) ? "🔥 " + isum(m) + "/" + 3 * PEOPLE.length : ""]
         : [m.watchedOn ? "📅 " + fmtDate(m.watchedOn) : "", m.lang ? "🗣️ " + m.lang : "", m.cinema ? "📍 " + m.cinema : ""])
       .filter(Boolean).map(t => `<span class="pill" title="${esc(t)}">${esc(t)}</span>`).join("");
     const badge = m.wish ? `<span class="avg none">Por ver</span>` : `<span class="avg ${a == null ? "none" : ""}">★ ${fmt(a)}</span>`;
@@ -359,6 +467,7 @@ function render() {
       ${pills ? `<div class="pills">${pills}</div>` : ""}</div></div>`;
   }).join("");
   renderStats(list);
+  renderSoon();
 }
 $("grid").onclick = (e) => { const c = e.target.closest(".card"); if (c) openDetail(c.dataset.id); };
 $("filter").oninput = render; $("sort").onchange = render; $("showWish").onchange = render;
@@ -386,12 +495,14 @@ function renderStats(all) {
 
   const mins = list.reduce((s, m) => s + (m.runtime || 0), 0);
   const avgAll = mean(list.map(avgOf).filter(x => x != null));
+  const spent = list.reduce((s, m) => s + (typeof m.price === "number" ? m.price : 0), 0);
   const tiles = [
     [list.length, "Películas"],
     [mins ? fmtRuntime(mins).replace(/ min$/, "m").replace(" h ", "h ") : "–", "En pantalla"],
     ["★ " + fmt(avgAll), "Nota media"],
     ...PEOPLE.map(p => ["★ " + fmt(mean(list.map(m => m.ratings?.[p.id]).filter(x => typeof x === "number"))), "Media " + p.name]),
     ...(pend ? [[pend, "Por ver"]] : []),
+    ...(spent ? [[fmtEUR(spent), "Gasto en cine"]] : []),
   ].map(t => `<div class="tile"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join("");
 
   const rated = list.filter(m => avgOf(m) != null).sort((a, b) => avgOf(b) - avgOf(a));
@@ -475,8 +586,12 @@ function renderDetail(id) {
         <div><label>Fecha</label><input type="date" id="vDate" value="${esc(m.watchedOn || "")}"></div>
         <div><label>Idioma</label><select id="vLang">${langOpts}</select></div>
       </div>
-      <label>Cine</label>
-      <input id="vCinema" list="cinemaList" placeholder="Elige uno o escribe otro…" value="${esc(m.cinema || "")}" autocomplete="off">
+      <div class="two">
+        <div style="flex:2"><label>Cine</label>
+        <input id="vCinema" list="cinemaList" placeholder="Elige uno o escribe otro…" value="${esc(m.cinema || "")}" autocomplete="off"></div>
+        <div><label>Precio total (€)</label>
+        <input id="vPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" value="${m.price ?? ""}"></div>
+      </div>
       <datalist id="cinemaList">${cinemas.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
       <div class="actions"><button class="btn" id="saveVisit">Guardar visita</button></div>
     </div>
@@ -488,16 +603,19 @@ function renderDetail(id) {
       <div class="actions"><button class="btn" id="saveMine">Guardar mi nota</button></div>
     </div>
     ${others}
+    <div class="sub" id="prov" style="margin-top:12px">📺 Buscando dónde verla…</div>
     <div class="actions"><button class="btn danger" id="delBtn">Eliminar</button><button class="btn ghost" id="closeDetail">Cerrar</button></div>`;
 
   const r = $("myRating"), v = $("myVal");
   r.oninput = () => { v.textContent = fmt(parseFloat(r.value)); };
   $("closeDetail").onclick = closeDetail;
+  fillProviders(m);
   $("saveVisit").onclick = async () => {
     await updateDoc(doc(moviesCol, id), {
       watchedOn: $("vDate").value || null,
       cinema: $("vCinema").value.trim() || null,
       lang: $("vLang").value || null,
+      price: $("vPrice").value === "" ? null : parseFloat($("vPrice").value),
     });
     toast("Visita guardada");
   };
@@ -524,9 +642,16 @@ function renderWishDetail(m) {
     </div>
     <div class="overview">${esc(m.overview || "")}</div>
     <div class="banner">🎯 Pendiente de ver. Cuando la veáis, pulsa “Ya la vimos” y podréis poner fecha, cine, idioma y notas.</div>
+    ${interestBlock(m)}
+    <div class="sub" id="prov" style="margin-top:12px">📺 …</div>
     <div class="actions"><button class="btn" id="seenBtn">✅ Ya la vimos</button></div>
     <div class="actions"><button class="btn danger" id="delBtn">Quitar</button><button class="btn ghost" id="closeDetail">Cerrar</button></div>`;
   $("closeDetail").onclick = closeDetail;
+  fillProviders(m);
+  document.querySelectorAll("[data-int]").forEach(b => b.onclick = async () => {
+    const n = +b.dataset.int, cur = m.interest?.[me] || 0;
+    await updateDoc(doc(moviesCol, m.id), { [`interest.${me}`]: cur === n ? 0 : n });
+  });
   $("seenBtn").onclick = async () => { await updateDoc(doc(moviesCol, m.id), { wish: false, watchedOn: todayStr() }); toast("¡Apuntada como vista!"); };
   $("delBtn").onclick = async () => { if (confirm(`¿Quitar “${m.title}” de la lista?`)) { await deleteDoc(doc(moviesCol, m.id)); closeDetail(); } };
 }
@@ -751,16 +876,508 @@ $("upList").onclick = async (e) => {
   if (ex) return;
   const x = up.items.find(i => String(i.id) === id); if (!x) return;
   b.disabled = true; b.textContent = "…";
+  await addWish(x);
+};
+
+// ======================================================================
+//  EXTRAS: tema, menú, copia de seguridad, instalación, juegos,
+//  resumen del año, récords, sagas, interés, calendario, plataformas
+// ======================================================================
+const fmtEUR = (n) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(n);
+const shuffle = (a) => { a = [...a]; for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+const pick1 = (a) => a[Math.floor(Math.random() * a.length)];
+const num = (x) => typeof x === "number";
+const seenList = () => movies.filter(m => !m.wish);
+const otherP = () => PEOPLE.find(p => p.id !== me) || PEOPLE[1];
+const daysBetween = (a, b) => Math.round((new Date(b + "T12:00:00") - new Date(a + "T12:00:00")) / 864e5);
+const openM = (id) => $(id).classList.remove("hidden");
+const closeM = (id) => $(id).classList.add("hidden");
+const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
+const monthName = (key) => cap(new Intl.DateTimeFormat("es", { month: "long", year: "numeric" }).format(new Date(key + "-15T12:00:00")).replace(" de ", " "));
+function isum(m) { return Object.values(m.interest || {}).reduce((a, b) => a + (+b || 0), 0); }
+function download(name, text, type) {
+  const a = document.createElement("a");
+  a.href = URL.createObjectURL(new Blob([text], { type }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1500);
+}
+
+// ---------- Menú ----------
+$("menuBtn").onclick = (e) => { e.stopPropagation(); $("menu").classList.toggle("hidden"); };
+document.addEventListener("click", (e) => { if (!e.target.closest("#menu")) $("menu").classList.add("hidden"); });
+$("menu").addEventListener("click", (e) => { if (e.target.closest("button")) $("menu").classList.add("hidden"); });
+
+// ---------- Tema claro / oscuro ----------
+function applyTheme() {
+  const pref = localStorage.getItem("peli_theme") || "auto";
+  const eff = pref === "auto" ? (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark") : pref;
+  document.documentElement.dataset.theme = eff;
+  document.querySelector('meta[name=theme-color]').content = eff === "light" ? "#f4f5f8" : "#0f1115";
+  $("themeBtn").textContent = "🌓 Tema: " + { auto: "Auto", light: "Claro", dark: "Oscuro" }[pref];
+}
+$("themeBtn").onclick = () => {
+  const o = ["auto", "light", "dark"], cur = localStorage.getItem("peli_theme") || "auto";
+  localStorage.setItem("peli_theme", o[(o.indexOf(cur) + 1) % 3]); applyTheme();
+};
+matchMedia("(prefers-color-scheme: light)").addEventListener?.("change", applyTheme);
+applyTheme();
+
+// ---------- Copia de seguridad ----------
+$("backupBtn").onclick = () => {
+  const data = { app: "peliculas", version: 1, exportedAt: new Date().toISOString(),
+    movies: movies.map(({ createdAt, ...m }) => ({ ...m, createdAtSec: createdAt?.seconds ?? null })) };
+  download(`peliculas-backup-${todayStr()}.json`, JSON.stringify(data, null, 1), "application/json");
+  toast("Copia descargada");
+};
+$("csvBtn").onclick = () => {
+  const head = ["Película", "Año", "Estado", "Fecha vista", "Cine", "Idioma", "Precio", ...PEOPLE.map(p => "Nota " + p.name), "Media", "Género", "Director", "Duración (min)", "Estreno"];
+  const cell = (v) => { const s = v == null ? "" : String(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const n = (v) => v == null ? "" : String(v).replace(".", ",");
+  const rows = [...movies].sort((a, b) => dateOf(b).localeCompare(dateOf(a))).map(m => [
+    m.title, m.year, m.wish ? "Por ver" : "Vista", m.watchedOn ? fmtDate(m.watchedOn) : "", m.cinema, m.lang, n(m.price),
+    ...PEOPLE.map(p => n(m.ratings?.[p.id])), n(avgOf(m) == null ? null : Math.round(avgOf(m) * 10) / 10),
+    (m.genres || []).join(", "), m.director, m.runtime, m.releaseDate ? fmtDate(m.releaseDate) : "",
+  ].map(cell).join(";"));
+  download(`peliculas-${todayStr()}.csv`, "﻿" + [head.map(cell).join(";"), ...rows].join("\r\n"), "text/csv;charset=utf-8");
+};
+$("restoreBtn").onclick = () => $("restoreFile").click();
+$("restoreFile").onchange = async (e) => {
+  const f = e.target.files[0]; e.target.value = ""; if (!f) return;
+  let d;
+  try { d = JSON.parse(await f.text()); if (d.app !== "peliculas" || !Array.isArray(d.movies)) throw 0; }
+  catch { alert("Ese archivo no es una copia válida."); return; }
+  if (!confirm(`Se restaurarán ${d.movies.length} películas (las que ya existan con el mismo id se sobrescribirán). ¿Continuar?`)) return;
+  let n = 0;
+  for (const { id, createdAtSec, ...m } of d.movies) { await setDoc(doc(moviesCol, String(id)), { ...m, createdAt: serverTimestamp() }); n++; }
+  toast(`Restauradas ${n} películas`);
+};
+
+// ---------- Instalar en el móvil (PWA) ----------
+let deferredInstall = null;
+window.addEventListener("beforeinstallprompt", (e) => { e.preventDefault(); deferredInstall = e; });
+$("installBtn").onclick = async () => {
+  if (matchMedia("(display-mode: standalone)").matches || navigator.standalone) { toast("Ya está instalada"); return; }
+  if (deferredInstall) { deferredInstall.prompt(); deferredInstall = null; return; }
+  alert("iPhone: botón Compartir → “Añadir a pantalla de inicio”.\nAndroid (Chrome): menú ⋮ → “Instalar aplicación”.");
+};
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
+
+// ---------- Pendientes: añadir, interés, aviso y calendario ----------
+async function addWish(x) {
+  const id = String(x.id);
+  if (!Object.keys(GENRES).length) await loadGenres();
   let info = {};
   try { info = await fetchDetails(id); } catch (err) { console.warn(err); }
   await setDoc(doc(moviesCol, id), {
     title: x.title, year: (x.release_date || "").slice(0, 4), poster: x.poster_path || null,
     overview: x.overview || "", addedBy: me, ratings: {}, comments: {}, createdAt: serverTimestamp(),
     watchedOn: null, cinema: null, lang: null, wish: true,
-    releaseDate: x.release_date || "", genres: (x.genre_ids || []).map(g => GENRES[g]).filter(Boolean),
+    genres: (x.genre_ids || []).map(g => GENRES[g]).filter(Boolean),
     ...info,
-    releaseDate: x.release_date || info.releaseDate || "", // la fecha que visteis en el listado
+    releaseDate: x.release_date || info.releaseDate || "",
   });
+}
+function interestBlock(m) {
+  const rows = PEOPLE.map(p => {
+    const v = m.interest?.[p.id] || 0, mine = p.id === me;
+    const stars = [1, 2, 3].map(n => `<button class="star ${v >= n ? "on" : ""}" ${mine ? `data-int="${n}"` : "disabled"}>★</button>`).join("");
+    return `<div class="int"><span>${esc(p.name)}${mine ? " (tú)" : ""}</span><span>${stars}</span></div>`;
+  }).join("");
+  return `<div class="block"><h3>🔥 ¿Cuántas ganas tenéis? (1-3)</h3>${rows}</div>`;
+}
+function renderSoon() {
+  const t0 = todayStr(), lim = new Date(); lim.setDate(lim.getDate() + 14);
+  const t1 = lim.toLocaleDateString("sv");
+  const soon = movies.filter(m => m.wish && m.releaseDate && m.releaseDate >= t0 && m.releaseDate <= t1)
+    .sort((a, b) => a.releaseDate.localeCompare(b.releaseDate)).slice(0, 3);
+  const el = $("soon");
+  el.classList.toggle("hidden", !soon.length);
+  el.innerHTML = soon.map(m => {
+    const d = daysBetween(t0, m.releaseDate);
+    return `🔔 <b>${esc(m.title)}</b> se estrena ${d === 0 ? "hoy" : d === 1 ? "mañana" : "en " + d + " días"} <span class="sub">(${fmtDate(m.releaseDate)})</span>`;
+  }).join("<br>");
+}
+const icsEsc = (s) => String(s).replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
+const ymd = (s) => s.replace(/-/g, "");
+function nextDay(s) { const d = new Date(s + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); }
+$("icsBtn").onclick = () => {
+  const list = movies.filter(m => m.wish && m.releaseDate && m.releaseDate >= todayStr());
+  if (!list.length) { toast("No hay pendientes con estreno futuro"); return; }
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
+  const ev = list.map(m => ["BEGIN:VEVENT", `UID:peli-${m.id}@peliculas`, `DTSTAMP:${stamp}`,
+    `DTSTART;VALUE=DATE:${ymd(m.releaseDate)}`, `DTEND;VALUE=DATE:${ymd(nextDay(m.releaseDate))}`,
+    `SUMMARY:${icsEsc("🎬 Estreno: " + m.title)}`, `DESCRIPTION:${icsEsc("Pendiente de ver (fecha según TMDB)")}`,
+    "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsEsc("Mañana se estrena " + m.title)}`, "TRIGGER:-PT15H", "END:VALARM",
+    "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsEsc("Hoy se estrena " + m.title)}`, "TRIGGER:PT9H", "END:VALARM",
+    "END:VEVENT"].join("\r\n"));
+  download("estrenos-pendientes.ics", ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Peliculas//ES", "CALSCALE:GREGORIAN", ...ev, "END:VCALENDAR"].join("\r\n"), "text/calendar");
+  toast(`${list.length} estrenos en el calendario`);
+};
+
+// ---------- Dónde verla (JustWatch vía TMDB) ----------
+const provCache = {};
+async function fillProviders(m) {
+  const el = $("prov"); if (!el) return;
+  if (m.wish && m.releaseDate && m.releaseDate > todayStr()) { el.textContent = `📺 Aún no disponible: estreno en cines el ${fmtDate(m.releaseDate)}.`; return; }
+  if (TMDB_API_KEY === "PEGA_AQUI") { el.textContent = ""; return; }
+  try {
+    if (!provCache[m.id]) {
+      const d = await (await fetch(`https://api.themoviedb.org/3/movie/${m.id}/watch/providers?api_key=${TMDB_API_KEY}`)).json();
+      const es = d.results?.ES || {};
+      const names = (k) => (es[k] || []).map(p => p.provider_name);
+      provCache[m.id] = { flat: names("flatrate"), rent: names("rent"), buy: names("buy") };
+    }
+    const p = provCache[m.id];
+    const parts = [p.flat.length && "Streaming: " + p.flat.join(", "), p.rent.length && "Alquiler: " + p.rent.slice(0, 4).join(", "), p.buy.length && "Compra: " + p.buy.slice(0, 4).join(", ")].filter(Boolean);
+    const el2 = $("prov");
+    if (el2 && openId === m.id) el2.innerHTML = parts.length
+      ? `📺 <b>Dónde verla en España</b><br>${esc(parts.join(" · "))} <small>(datos de JustWatch)</small>`
+      : "📺 Ahora mismo no aparece en ninguna plataforma de España.";
+  } catch { const el2 = $("prov"); if (el2) el2.textContent = ""; }
+}
+
+// ======================================================================
+//  JUEGOS
+// ======================================================================
+$("gamesBtn").onclick = () => { openM("gamesModal"); setGamesTab("duel"); };
+$("gamesClose").onclick = () => closeM("gamesModal");
+$("gamesModal").onclick = (e) => { if (e.target === $("gamesModal")) closeM("gamesModal"); };
+$("gamesTabs").onclick = (e) => { const b = e.target.closest("[data-t]"); if (b) setGamesTab(b.dataset.t); };
+function setGamesTab(t) {
+  [...$("gamesTabs").children].forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  ({ duel: renderDuel, guess: renderGuess, quiz: startQuiz })[t]();
+}
+
+// --- Adivina la nota: puntuación y marcador ---
+const guessPts = (d) => d === 0 ? 5 : d <= 0.5 ? 3 : d <= 1 ? 2 : d <= 2 ? 1 : 0;
+function guessStats() {
+  const res = PEOPLE.map(p => ({ p, n: 0, pts: 0, err: 0, exact: 0 }));
+  seenList().forEach(m => res.forEach(r => {
+    const o = PEOPLE.find(x => x.id !== r.p.id), g = m.guesses?.[r.p.id], act = m.ratings?.[o.id];
+    if (num(g) && num(act)) { const d = Math.abs(g - act); r.n++; r.err += d; r.pts += guessPts(d); if (d === 0) r.exact++; }
+  }));
+  return res;
+}
+
+// --- Duelo de notas ---
+function renderDuel() {
+  const [A, B] = PEOPLE, body = $("gamesBody");
+  const both = seenList().filter(m => num(m.ratings?.[A.id]) && num(m.ratings?.[B.id]));
+  if (!both.length) { body.innerHTML = `<div class="sub" style="padding:14px 0">Aún no hay películas puntuadas por los dos.</div>`; return; }
+  const avgA = mean(both.map(m => m.ratings[A.id])), avgB = mean(both.map(m => m.ratings[B.id]));
+  const wa = both.filter(m => m.ratings[A.id] > m.ratings[B.id]).length;
+  const wb = both.filter(m => m.ratings[B.id] > m.ratings[A.id]).length, tie = both.length - wa - wb;
+  const agree = Math.round(both.filter(m => Math.abs(m.ratings[A.id] - m.ratings[B.id]) <= 0.5).length / both.length * 100);
+  const fights = both.map(m => ({ m, d: Math.abs(m.ratings[A.id] - m.ratings[B.id]) })).filter(x => x.d > 0).sort((x, y) => y.d - x.d).slice(0, 5);
+  const unity = both.filter(m => m.ratings[A.id] === m.ratings[B.id]).sort((x, y) => y.ratings[A.id] - x.ratings[A.id]).slice(0, 3);
+  const verdict = avgA === avgB ? "Sois igual de exigentes" : `${esc(avgA < avgB ? A.name : B.name)} es el más exigente`;
+  const seg = (cls, n, label) => n ? `<div class="${cls}" style="flex:${n}">${n} ${label}</div>` : "";
+  const gs = guessStats().filter(r => r.n);
+  let guessHtml = `<div class="sub">Nadie ha jugado aún a “Adivina la nota”.</div>`;
+  if (gs.length) {
+    guessHtml = gs.map(r => `<div class="li"><span>🎯 ${esc(r.p.name)}</span><span>${r.n} intentos · error medio <b>${fmt(r.err / r.n)}</b> · ${r.pts} pts</span></div>`).join("");
+    if (gs.length === 2 && gs[0].err / gs[0].n !== gs[1].err / gs[1].n) {
+      const best = gs[0].err / gs[0].n < gs[1].err / gs[1].n ? gs[0] : gs[1];
+      guessHtml += `<div class="rc">🧠 <b>${esc(best.p.name)}</b> conoce mejor los gustos del otro.</div>`;
+    }
+  }
+  body.innerHTML = `
+    <div class="vsHead"><span>${esc(A.name)} ★ ${fmt(avgA)}</span><span>⚔️</span><span>★ ${fmt(avgB)} ${esc(B.name)}</span></div>
+    <div class="vs">${seg("a", wa, "")}${seg("t", tie, "=")}${seg("b", wb, "")}</div>
+    <div class="sub">Puntúa más alto: ${esc(A.name)} en ${wa} · ${esc(B.name)} en ${wb} · iguales en ${tie}</div>
+    <div class="rc">${verdict}. Coincidís (±0,5) en el <b>${agree}%</b> de las películas.</div>
+    ${fights.length ? `<h4 class="sec">🥊 Las más discutidas</h4>${fights.map(x => `<div class="li"><span>${esc(x.m.title)}</span><span>${fmt(x.m.ratings[A.id])} vs ${fmt(x.m.ratings[B.id])} <small>(${fmt(x.d)})</small></span></div>`).join("")}` : ""}
+    ${unity.length ? `<h4 class="sec">🤝 Unanimidad</h4>${unity.map(m => `<div class="li"><span>${esc(m.title)}</span><span>${fmt(m.ratings[A.id])} los dos</span></div>`).join("")}` : ""}
+    <h4 class="sec">🎯 Marcador de “Adivina la nota”</h4>${guessHtml}`;
+}
+
+// --- Adivina la nota ---
+let guessId = null, guessRev = null;
+function renderGuess() {
+  const o = otherP(), body = $("gamesBody");
+  let m = guessId && movies.find(x => x.id === guessId);
+  if (!m || (!guessRev && num(m.guesses?.[me]))) {
+    const c = seenList().filter(x => num(x.ratings?.[o.id]) && !num(x.guesses?.[me]));
+    m = c.length ? pick1(c) : null; guessId = m?.id || null; guessRev = null;
+  }
+  const mine = guessStats().find(r => r.p.id === me);
+  const score = mine.n ? `<div class="sub" style="margin-top:10px">Tu marcador: ${mine.n} adivinadas · error medio ${fmt(mine.err / mine.n)} · ${mine.pts} pts</div>` : "";
+  if (!m) { body.innerHTML = `<div class="rc">🎉 No quedan películas por adivinar: ${esc(o.name)} no ha puntuado más que las que ya has intentado.</div>${score}`; return; }
+  const head = `<div class="row" style="margin-top:6px">${m.poster ? `<img src="${IMG}w185${m.poster}" alt="">` : ""}
+    <div><h2 style="font-size:18px">${esc(m.title)}</h2><div class="sub">${esc(m.year || "")}${m.genres?.length ? " · " + esc(m.genres.slice(0, 2).join(", ")) : ""}</div>
+    <div class="sub" style="margin-top:6px">Tu nota: ★ ${fmt(m.ratings?.[me])}</div></div></div>`;
+  if (!guessRev) {
+    body.innerHTML = `${head}<div class="block"><h3>¿Qué nota le puso ${esc(o.name)}?</h3>
+      <div class="rate"><input type="range" id="gRange" min="0" max="10" step="0.5" value="7"><span class="val" id="gVal">7</span></div>
+      <div class="actions"><button class="btn" id="gGo">Adivinar</button></div></div>${score}`;
+    $("gRange").oninput = () => { $("gVal").textContent = fmt(+$("gRange").value); };
+    $("gGo").onclick = async () => {
+      const g = +$("gRange").value, id = m.id, act = m.ratings[o.id], com = m.comments?.[o.id];
+      guessRev = { g, act, com }; // se muestra al instante; el guardado va detrás
+      renderGuess();
+      await updateDoc(doc(moviesCol, id), { [`guesses.${me}`]: g });
+    };
+  } else {
+    const d = Math.abs(guessRev.g - guessRev.act), pts = guessPts(d);
+    body.innerHTML = `${head}<div class="block"><h3>${esc(o.name)} le puso</h3>
+      <div style="font-size:42px;font-weight:800;color:var(--accent)">★ ${fmt(guessRev.act)}</div>
+      <div class="sub">Tú dijiste ${fmt(guessRev.g)} · diferencia ${fmt(d)}</div>
+      <div class="rc">${d === 0 ? "🎯 ¡Clavado!" : d <= 0.5 ? "👏 Casi" : d <= 2 ? "🙂 Cerca" : "😅 Lejos"} · <b>+${pts} puntos</b></div>
+      ${guessRev.com ? `<div class="overview">“${esc(guessRev.com)}”</div>` : ""}
+      <div class="actions"><button class="btn" id="gNext">Siguiente</button></div></div>`;
+    $("gNext").onclick = () => { guessId = null; guessRev = null; renderGuess(); };
+  }
+}
+
+// --- Quiz de vuestro historial ---
+let quiz = null;
+function buildQuiz() {
+  const S = seenList(), [A, B] = PEOPLE;
+  const withCinema = S.filter(m => m.cinema), cinemas = [...new Set(withCinema.map(m => m.cinema))];
+  const withDate = S.filter(m => m.watchedOn);
+  const withDir = S.filter(m => m.director), dirs = [...new Set(withDir.map(m => m.director))];
+  const bothR = S.filter(m => num(m.ratings?.[A.id]) && num(m.ratings?.[B.id]));
+  const rated = S.filter(m => avgOf(m) != null);
+  const gens = [];
+  if (cinemas.length >= 2) gens.push(() => { const m = pick1(withCinema);
+    return { q: `¿En qué cine vimos “${m.title}”?`, opts: shuffle([m.cinema, ...shuffle(cinemas.filter(c => c !== m.cinema)).slice(0, 3)]), ans: m.cinema, key: "c" + m.id }; });
+  if (withDate.length) gens.push(() => { const m = pick1(withDate), y = +m.watchedOn.slice(0, 4), set = new Set([y]);
+    [y - 1, y + 1, y - 2, y + 2, y + 3, y - 3].forEach(v => { if (set.size < 4 && v <= new Date().getFullYear()) set.add(v); });
+    return { q: `¿En qué año vimos “${m.title}”?`, opts: shuffle([...set].map(String)), ans: String(y), key: "y" + m.id }; });
+  if (bothR.length) gens.push(() => { const m = pick1(bothR), a = m.ratings[A.id], b = m.ratings[B.id];
+    return { q: `¿Quién puso mejor nota a “${m.title}”?`, opts: [A.name, B.name, "Misma nota"], ans: a === b ? "Misma nota" : a > b ? A.name : B.name, key: "w" + m.id }; });
+  if (rated.length >= 4) gens.push(() => { const four = shuffle(rated).slice(0, 4), best = four.reduce((a, b) => avgOf(b) > avgOf(a) ? b : a);
+    if (four.filter(m => avgOf(m) === avgOf(best)).length > 1) return null;
+    return { q: "¿Cuál de estas tiene mejor nota media?", opts: four.map(m => m.title), ans: best.title, key: "b" + four.map(m => m.id).sort().join() }; });
+  if (dirs.length >= 2) gens.push(() => { const m = pick1(withDir);
+    return { q: `¿Quién dirigió “${m.title}”?`, opts: shuffle([m.director, ...shuffle(dirs.filter(d => d !== m.director)).slice(0, 3)]), ans: m.director, key: "d" + m.id }; });
+  if (withDate.length >= 2) gens.push(() => { const [a, b] = shuffle(withDate).slice(0, 2); if (a.watchedOn === b.watchedOn) return null;
+    return { q: "¿Cuál vimos primero?", opts: [a.title, b.title], ans: a.watchedOn < b.watchedOn ? a.title : b.title, key: "f" + [a.id, b.id].sort().join() }; });
+  if (rated.length) gens.push(() => { const p = pick1(PEOPLE), ms = S.filter(m => num(m.ratings?.[p.id])); if (!ms.length) return null;
+    const m = pick1(ms), v = m.ratings[p.id], set = new Set([v]);
+    [v - 1, v + 1, v - 0.5, v + 0.5, v - 2, v + 2].forEach(x => { if (set.size < 4 && x >= 0 && x <= 10) set.add(x); });
+    return { q: `¿Qué nota le puso ${p.name} a “${m.title}”?`, opts: shuffle([...set].map(fmt)), ans: fmt(v), key: "n" + p.id + m.id }; });
+  const qs = [], used = new Set(); let tries = 0;
+  while (qs.length < 8 && gens.length && tries++ < 120) {
+    const q = pick1(gens)();
+    if (q && !used.has(q.key) && q.opts.length >= 2) { used.add(q.key); qs.push(q); }
+  }
+  return qs;
+}
+function startQuiz() { quiz = { qs: buildQuiz(), i: 0, score: 0, done: false }; renderQuiz(); }
+function renderQuiz() {
+  const body = $("gamesBody"), z = quiz;
+  if (z.qs.length < 3) { body.innerHTML = `<div class="sub" style="padding:14px 0">Aún hay pocos datos para el quiz. Apunta más películas con fecha, cine y notas.</div>`; return; }
+  if (z.i >= z.qs.length) {
+    const r = z.score / z.qs.length;
+    body.innerHTML = `<div class="rc" style="text-align:center"><div style="font-size:42px;font-weight:800;color:var(--accent)">${z.score}/${z.qs.length}</div>
+      ${r === 1 ? "🏆 ¡Memoria de elefante!" : r >= 0.6 ? "🎬 Buen cinéfilo" : "🙈 Toca repasar el historial"}</div>
+      <div class="actions"><button class="btn" id="qAgain">Otra partida</button></div>`;
+    $("qAgain").onclick = startQuiz; return;
+  }
+  const q = z.qs[z.i];
+  body.innerHTML = `<div class="sub" style="margin-top:6px">Pregunta ${z.i + 1} de ${z.qs.length} · aciertos: ${z.score}</div>
+    <h3 style="margin:8px 0">${esc(q.q)}</h3>
+    ${q.opts.map((o, i) => `<button class="opt" data-o="${i}">${esc(o)}</button>`).join("")}
+    <div id="qFb"></div>`;
+  body.querySelectorAll("[data-o]").forEach(b => b.onclick = () => {
+    if (z.done) return; z.done = true;
+    const chosen = q.opts[+b.dataset.o], ok = chosen === q.ans;
+    if (ok) z.score++;
+    body.querySelectorAll("[data-o]").forEach(x => { const v = q.opts[+x.dataset.o]; if (v === q.ans) x.classList.add("ok"); else if (x === b) x.classList.add("bad"); });
+    $("qFb").innerHTML = `<div class="actions"><button class="btn" id="qNext">${z.i + 1 === z.qs.length ? "Ver resultado" : "Siguiente"}</button></div>`;
+    $("qNext").onclick = () => { z.i++; z.done = false; renderQuiz(); };
+  });
+}
+
+// ======================================================================
+//  RESUMEN DEL AÑO (estilo "Wrapped")
+// ======================================================================
+const WGRAD = ["linear-gradient(160deg,#6a11cb,#2575fc)", "linear-gradient(160deg,#f12711,#f5af19)", "linear-gradient(160deg,#11998e,#2bb673)",
+  "linear-gradient(160deg,#ee0979,#ff6a00)", "linear-gradient(160deg,#654ea3,#c96bb0)", "linear-gradient(160deg,#1e3c72,#2a5298)",
+  "linear-gradient(160deg,#cb2d3e,#8e1f3a)", "linear-gradient(160deg,#134e5e,#3d8b6a)", "linear-gradient(160deg,#232526,#414345)"];
+function monthStreak(list) {
+  const ks = [...new Set(list.map(m => m.watchedOn.slice(0, 7)))].sort();
+  const idx = (k) => { const [y, mo] = k.split("-"); return +y * 12 + (+mo - 1); };
+  let best = { len: 0, start: null, end: null }, cur = { len: 0, start: null };
+  ks.forEach((k, i) => {
+    if (i > 0 && idx(k) === idx(ks[i - 1]) + 1) cur.len++; else cur = { len: 1, start: k };
+    if (cur.len > best.len) best = { len: cur.len, start: cur.start, end: k };
+  });
+  return best;
+}
+function buildWrap(Y) {
+  const S = seenList().filter(m => (m.watchedOn || "").startsWith(Y));
+  let gi = 0; const G = () => WGRAD[gi++ % WGRAD.length];
+  if (!S.length) return [{ bg: G(), html: `<div class="big">🎞️</div><h3>Sin películas en ${Y}</h3><p>Apunta visitas con fecha y vuelve a mirar.</p>` }];
+  const sl = [], [A, B] = PEOPLE, plural = (n, s, p) => n === 1 ? s : p;
+  const mins = S.reduce((s, m) => s + (m.runtime || 0), 0);
+  const spent = S.reduce((s, m) => s + (num(m.price) ? m.price : 0), 0);
+  const poster = (m) => m.poster ? `<img src="${IMG}w342${m.poster}" alt="">` : "";
+  sl.push({ bg: G(), html: `<p>Vuestro año en el cine</p><div class="big">${Y}</div><h3>${S.length} ${plural(S.length, "película", "películas")} 🍿</h3>` });
+  if (mins) sl.push({ bg: G(), html: `<p>Pasasteis</p><div class="big">${Math.round(mins / 60)} h</div><p>en la sala oscura</p><h3>≈ ${fmt(mins / 1440)} días seguidos de peli</h3>${spent ? `<p class="sm">y ${fmtEUR(spent)} en entradas 💶</p>` : ""}` });
+  else if (spent) sl.push({ bg: G(), html: `<p>Os gastasteis</p><div class="big sm2">${fmtEUR(spent)}</div><p>en entradas 💶</p>` });
+  const rated = S.filter(m => avgOf(m) != null).sort((a, b) => avgOf(b) - avgOf(a));
+  if (rated.length) sl.push({ bg: G(), html: `<p>🏆 La mejor del año</p>${poster(rated[0])}<h3>${esc(rated[0].title)}</h3><p>★ ${fmt(avgOf(rated[0]))} de media</p>` });
+  if (rated.length > 1) { const w = rated[rated.length - 1]; sl.push({ bg: G(), html: `<p>💩 La peor… que no se repita</p>${poster(w)}<h3>${esc(w.title)}</h3><p>★ ${fmt(avgOf(w))} de media</p>` }); }
+  const cin = countBy(S, m => m.cinema), lng = countBy(S, m => m.lang);
+  if (cin.length) sl.push({ bg: G(), html: `<p>📍 Vuestro cine</p><div class="big sm2">${esc(cin[0][0])}</div><h3>${cin[0][1]} ${plural(cin[0][1], "visita", "visitas")}</h3>${lng.length ? `<p class="sm">Idioma favorito: ${esc(lng[0][0])} (${lng[0][1]} de ${S.length})</p>` : ""}` });
+  const gen = countBy(S, m => m.genres || []), dirs = countBy(S, m => m.director ? m.director.split(", ") : []).filter(e => e[1] > 1);
+  if (gen.length) sl.push({ bg: G(), html: `<p>🎭 Género del año</p><div class="big sm2">${esc(gen[0][0])}</div><h3>${gen[0][1]} ${plural(gen[0][1], "película", "películas")}</h3>${dirs.length ? `<p class="sm">Director más repetido: ${esc(dirs[0][0])} (${dirs[0][1]})</p>` : ""}` });
+  const both = S.filter(m => num(m.ratings?.[A.id]) && num(m.ratings?.[B.id]));
+  if (both.length) {
+    const aa = mean(both.map(m => m.ratings[A.id])), bb = mean(both.map(m => m.ratings[B.id]));
+    const top = both.map(m => ({ m, d: Math.abs(m.ratings[A.id] - m.ratings[B.id]) })).sort((x, y) => y.d - x.d)[0];
+    sl.push({ bg: G(), html: `<p>⚔️ El duelo</p><h3>${esc(A.name)} ★ ${fmt(aa)} · ${esc(B.name)} ★ ${fmt(bb)}</h3><p>${aa === bb ? "Empate técnico" : esc(aa < bb ? A.name : B.name) + " es el más exigente"}</p>${top.d > 0 ? `<p class="sm">Más discutida: ${esc(top.m.title)} (${fmt(top.m.ratings[A.id])} vs ${fmt(top.m.ratings[B.id])})</p>` : ""}` });
+  }
+  const mo = countBy(S, m => m.watchedOn.slice(0, 7)), st = monthStreak(S);
+  sl.push({ bg: G(), html: `<p>📅 Mes más cinéfilo</p><div class="big sm2">${monthName(mo[0][0])}</div><h3>${mo[0][1]} ${plural(mo[0][1], "película", "películas")}</h3>${st.len > 1 ? `<p class="sm">Racha: ${st.len} meses seguidos yendo al cine</p>` : ""}` });
+  const next = movies.filter(m => m.wish && (m.releaseDate || "").startsWith(String(+Y + 1))).length;
+  sl.push({ bg: G(), html: `<div class="big">🎞️</div><h3>¡Hasta el próximo ${+Y + 1}!</h3>${next ? `<p>Os esperan ${next} ${plural(next, "estreno pendiente", "estrenos pendientes")}</p>` : ""}` });
+  return sl;
+}
+let wrapSlides = [], wrapI = 0, wrapYear = "";
+function openWrap(year) { wrapYear = year; wrapSlides = buildWrap(year); wrapI = 0; openM("wrapModal"); renderWrap(); }
+function renderWrap() {
+  const s = wrapSlides[wrapI];
+  const years = [...new Set(seenList().map(m => (m.watchedOn || "").slice(0, 4)).filter(Boolean))].sort().reverse();
+  if (!years.includes(wrapYear)) years.unshift(wrapYear);
+  $("wrapModal").innerHTML = `<div class="wrap" style="background:${s.bg}">
+    <div class="wprog">${wrapSlides.map((_, i) => `<i class="${i <= wrapI ? "on" : ""}"></i>`).join("")}</div>
+    <div class="wtop"><select id="wrapYear">${years.map(y => `<option ${y === wrapYear ? "selected" : ""}>${y}</option>`).join("")}</select><button id="wrapX" aria-label="Cerrar">✕</button></div>
+    <div class="wbody">${s.html}</div>
+    <button class="wnav l" id="wPrev" aria-label="Anterior"></button><button class="wnav r" id="wNext" aria-label="Siguiente"></button></div>`;
+  $("wrapX").onclick = () => closeM("wrapModal");
+  $("wrapYear").onchange = () => openWrap($("wrapYear").value);
+  $("wPrev").onclick = () => { if (wrapI > 0) { wrapI--; renderWrap(); } };
+  $("wNext").onclick = () => { if (wrapI < wrapSlides.length - 1) { wrapI++; renderWrap(); } else closeM("wrapModal"); };
+}
+document.addEventListener("keydown", (e) => {
+  if ($("wrapModal").classList.contains("hidden")) return;
+  if (e.key === "ArrowRight") $("wNext").click(); else if (e.key === "ArrowLeft") $("wPrev").click(); else if (e.key === "Escape") closeM("wrapModal");
+});
+$("wrapBtn").onclick = () => openWrap(/^\d{4}$/.test(yearFilter) ? yearFilter : String(new Date().getFullYear()));
+
+// ======================================================================
+//  RÉCORDS, CINES, GASTO Y SAGAS
+// ======================================================================
+let recTab = "rec";
+$("recBtn").onclick = () => { openM("recModal"); setRecTab("rec"); };
+$("recClose").onclick = () => closeM("recModal");
+$("recModal").onclick = (e) => { if (e.target === $("recModal")) closeM("recModal"); };
+$("recTabs").onclick = (e) => { const b = e.target.closest("[data-t]"); if (b) setRecTab(b.dataset.t); };
+function setRecTab(t) {
+  recTab = t;
+  [...$("recTabs").children].forEach(b => b.classList.toggle("on", b.dataset.t === t));
+  ({ rec: renderRecords, cines: renderCines, gasto: renderGasto, sagas: renderSagas })[t]();
+}
+const card = (icon, label, value, detail) => `<div class="rc">${icon} <small>${esc(label)}</small><br><b>${value}</b>${detail ? `<br><small>${detail}</small>` : ""}</div>`;
+const WD = ["domingo", "lunes", "martes", "miércoles", "jueves", "viernes", "sábado"];
+
+function renderRecords() {
+  const S = seenList().filter(m => m.watchedOn), body = $("recBody");
+  if (!S.length) { body.innerHTML = `<div class="sub" style="padding:14px 0">Apunta fechas en vuestras visitas para ver récords.</div>`; return; }
+  const out = [];
+  const mo = countBy(S, m => m.watchedOn.slice(0, 7)); out.push(card("📅", "Mes con más películas", monthName(mo[0][0]), `${mo[0][1]} películas`));
+  const yr = countBy(S, m => m.watchedOn.slice(0, 4)); out.push(card("🗓️", "Año con más películas", yr[0][0], `${yr[0][1]} películas`));
+  const st = monthStreak(S); if (st.len > 1) out.push(card("🔥", "Racha más larga yendo al cine", `${st.len} meses seguidos`, `${monthName(st.start)} → ${monthName(st.end)}`));
+  const sorted = [...S].sort((a, b) => a.watchedOn.localeCompare(b.watchedOn));
+  let gap = { d: 0 };
+  for (let i = 1; i < sorted.length; i++) { const d = daysBetween(sorted[i - 1].watchedOn, sorted[i].watchedOn); if (d > gap.d) gap = { d, a: sorted[i - 1], b: sorted[i] }; }
+  if (gap.d > 0) out.push(card("😴", "Mayor parón", `${gap.d} días`, `entre ${esc(gap.a.title)} y ${esc(gap.b.title)}`));
+  const last = sorted[sorted.length - 1], since = daysBetween(last.watchedOn, todayStr());
+  if (since > 0) out.push(card("⏳", "Sin ir al cine desde hace", `${since} días`, `última: ${esc(last.title)} (${fmtDate(last.watchedOn)})`));
+  const wd = countBy(S, m => WD[new Date(m.watchedOn + "T12:00:00").getDay()]); out.push(card("📆", "Día favorito para ir", cap(wd[0][0]), `${wd[0][1]} películas`));
+  const withRt = S.filter(m => m.runtime);
+  if (withRt.length) {
+    const lo = withRt.reduce((a, b) => a.runtime < b.runtime ? a : b), hi = withRt.reduce((a, b) => a.runtime > b.runtime ? a : b);
+    out.push(card("🐢", "La más larga", esc(hi.title), fmtRuntime(hi.runtime)));
+    out.push(card("🐇", "La más corta", esc(lo.title), fmtRuntime(lo.runtime)));
+  }
+  const rated = S.filter(m => avgOf(m) != null).sort((a, b) => avgOf(b) - avgOf(a));
+  if (rated.length > 1) {
+    out.push(card("🏆", "Mejor nota media", esc(rated[0].title), `★ ${fmt(avgOf(rated[0]))}`));
+    out.push(card("💩", "Peor nota media", esc(rated[rated.length - 1].title), `★ ${fmt(avgOf(rated[rated.length - 1]))}`));
+  }
+  const tens = S.filter(m => PEOPLE.every(p => m.ratings?.[p.id] === 10));
+  if (tens.length) out.push(card("💯", "Dieces de los dos", `${tens.length}`, tens.slice(0, 4).map(m => esc(m.title)).join(", ")));
+  const delays = S.filter(m => m.releaseDate).map(m => ({ m, d: daysBetween(m.releaseDate, m.watchedOn) })).filter(x => x.d >= 0 && x.d <= 1500);
+  if (delays.length) {
+    const fast = delays.reduce((a, b) => a.d < b.d ? a : b);
+    out.push(card("🏃", "Tardáis de media en verla", `${Math.round(mean(delays.map(x => x.d)))} días`, `desde su estreno · la más rápida: ${esc(fast.m.title)} (${fast.d} d)`));
+  }
+  body.innerHTML = out.join("");
+}
+
+function renderCines() {
+  const S = seenList().filter(m => m.cinema), body = $("recBody");
+  if (!S.length) { body.innerHTML = `<div class="sub" style="padding:14px 0">Aún no hay cines apuntados en las visitas.</div>`; return; }
+  const by = {};
+  S.forEach(m => { const c = by[m.cinema] = by[m.cinema] || { n: 0, avgs: [], last: "", spent: 0, langs: {} };
+    c.n++; if (avgOf(m) != null) c.avgs.push(avgOf(m)); if ((m.watchedOn || "") > c.last) c.last = m.watchedOn || "";
+    if (num(m.price)) c.spent += m.price; if (m.lang) c.langs[m.lang] = (c.langs[m.lang] || 0) + 1; });
+  const list = Object.entries(by).sort((a, b) => b[1].n - a[1].n);
+  const max = list[0][1].n;
+  body.innerHTML = list.map(([name, c]) => `<div class="rc"><div class="vsHead"><span>📍 ${esc(name)}</span><span>${c.n} ${c.n === 1 ? "visita" : "visitas"}</span></div>
+    <div class="bar" style="grid-template-columns:1fr"><div class="track"><i style="width:${c.n / max * 100}%"></i></div></div>
+    <small>${c.avgs.length ? `★ ${fmt(mean(c.avgs))} de media · ` : ""}${c.last ? `última: ${fmtDate(c.last)} · ` : ""}${c.spent ? `${fmtEUR(c.spent)} gastados · ` : ""}${Object.entries(c.langs).map(([l, n]) => `${esc(l)} ${n}`).join(", ")}</small><br>
+    <a class="lnk" target="_blank" rel="noopener" href="https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(name)}">Ver en Google Maps ↗</a></div>`).join("");
+}
+
+function renderGasto() {
+  const S = seenList().filter(m => num(m.price)), body = $("recBody");
+  if (!S.length) { body.innerHTML = `<div class="sub" style="padding:14px 0">Apunta el <b>precio total</b> al guardar cada visita (campo “Precio total (€)”) y aquí verás el gasto.</div>`; return; }
+  const total = S.reduce((s, m) => s + m.price, 0), hi = S.reduce((a, b) => a.price > b.price ? a : b);
+  const sumBy = (keyFn) => { const o = {}; S.forEach(m => { const k = keyFn(m); if (k) o[k] = (o[k] || 0) + m.price; }); return Object.entries(o); };
+  const eurBars = (entries) => { const mx = Math.max(1, ...entries.map(e => e[1]));
+    return entries.map(([k, v]) => `<div class="bar" style="grid-template-columns:110px 1fr 70px"><span title="${esc(k)}">${esc(k)}</span><div class="track"><i style="width:${v / mx * 100}%"></i></div><b>${fmtEUR(v)}</b></div>`).join(""); };
+  const hours = S.reduce((s, m) => s + (m.runtime || 0), 0) / 60;
+  body.innerHTML = `<div class="tiles"><div class="tile"><b>${fmtEUR(total)}</b><span>Gasto total (${S.length} visitas)</span></div>
+    <div class="tile"><b>${fmtEUR(total / S.length)}</b><span>Media por visita</span></div></div>
+    ${hours ? `<div class="rc">⏱️ Salís a <b>${fmtEUR(total / hours)}</b> la hora de cine.</div>` : ""}
+    <div class="rc">💸 La visita más cara: <b>${esc(hi.title)}</b> · ${fmtEUR(hi.price)}${hi.cinema ? " en " + esc(hi.cinema) : ""}</div>
+    <h4 class="sec">Por año</h4>${eurBars(sumBy(m => (m.watchedOn || "").slice(0, 4)).sort((a, b) => a[0].localeCompare(b[0])))}
+    <h4 class="sec">Por cine</h4>${eurBars(sumBy(m => m.cinema).sort((a, b) => b[1] - a[1]).slice(0, 6))}`;
+}
+
+// --- Sagas y seguimiento ---
+const collCache = {};
+async function renderSagas() {
+  const body = $("recBody"), cols = new Map();
+  movies.forEach(m => { if (m.collection?.id && !cols.has(m.collection.id)) cols.set(m.collection.id, m.collection); });
+  if (!cols.size) { body.innerHTML = `<div class="sub" style="padding:14px 0">Aún no se ha detectado ninguna saga. Se rellenan solas (necesitan la clave de TMDB); vuelve en un momento.</div>`; return; }
+  body.innerHTML = `<div class="sub" style="padding:14px 0">Cargando sagas…</div>`;
+  for (const id of cols.keys()) if (!collCache[id]) {
+    try { collCache[id] = await (await fetch(`https://api.themoviedb.org/3/collection/${id}?api_key=${TMDB_API_KEY}&language=es-ES`)).json(); }
+    catch { collCache[id] = { parts: [] }; }
+  }
+  if (recTab !== "sagas") return;
+  const html = [...cols.entries()].map(([id, c]) => {
+    const parts = [...(collCache[id].parts || [])].sort((a, b) => (a.release_date || "9999").localeCompare(b.release_date || "9999"));
+    const state = (p) => { const m = movies.find(x => x.id === String(p.id)); return m ? (m.wish ? "wish" : "seen") : "none"; };
+    const seenN = parts.filter(p => state(p) === "seen").length;
+    if (!parts.length || !seenN) return "";
+    const missing = parts.filter(p => state(p) === "none");
+    const rows = parts.map(p => {
+      const st = state(p), m = movies.find(x => x.id === String(p.id));
+      const future = p.release_date && p.release_date > todayStr();
+      const right = st === "seen" ? `✅ ${m.watchedOn ? fmtDate(m.watchedOn) : "vista"}` : st === "wish" ? "🎯 por ver"
+        : `<button class="btn ghost" data-saga="${id}:${p.id}">☆ Por ver</button>`;
+      return `<div class="part"><span>${esc(p.title)} <small style="color:var(--muted)">${p.release_date ? (future ? "· estreno " : "· ") + fmtDate(p.release_date) : "· sin fecha"}</small></span><span>${right}</span></div>`;
+    }).join("");
+    return `<div class="saga"><h4>🎞️ ${esc(collCache[id].name || c.name)}</h4>
+      <div class="sub">${seenN} de ${parts.length} vistas${missing.length ? ` · te ${missing.length === 1 ? "falta" : "faltan"}: ${missing.map(p => esc(p.title)).join(", ")}` : " · ¡saga completa! 🎉"}</div>
+      <div class="bar" style="grid-template-columns:1fr"><div class="track"><i style="width:${seenN / parts.length * 100}%"></i></div></div>${rows}</div>`;
+  }).join("");
+  body.innerHTML = html || `<div class="sub" style="padding:14px 0">No hay sagas con películas vistas todavía.</div>`;
+}
+$("recBody").onclick = async (e) => {
+  const b = e.target.closest("[data-saga]"); if (!b) return;
+  const [cid, pid] = b.dataset.saga.split(":");
+  const p = (collCache[cid]?.parts || []).find(x => String(x.id) === pid); if (!p) return;
+  b.disabled = true; b.textContent = "…";
+  await addWish(p);
+  if (recTab === "sagas") renderSagas();
 };
 </script>
 </body>
