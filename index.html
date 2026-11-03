@@ -518,7 +518,7 @@ const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
 
 let yearFilter = String(new Date().getFullYear()); // por defecto: el año actual
 // Fecha que sitúa una película en el calendario: cuándo la vimos, o (si está pendiente) su estreno
-const dateOf = (m) => m.watchedOn || (m.wish ? m.releaseDate : "") || "";
+const dateOf = (m) => m.watchedOn || (m.wish ? m.releaseDate : "") || (m.watchedYear ? m.watchedYear + "-01-01" : "");
 const yearOf = (m) => dateOf(m).slice(0, 4) || null;
 
 function syncYearSelect() {
@@ -567,7 +567,7 @@ function render() {
     const mini = m.wish ? "" : PEOPLE.map(p => `${esc(p.name)}: ${fmt(m.ratings?.[p.id])}`).join(" · ");
     const pills = (m.wish
         ? [m.releaseDate ? "🎯 Estreno " + fmtDate(m.releaseDate) : "🎯 Pendiente", isum(m) ? "🔥 " + isum(m) + "/" + 3 * PEOPLE.length : ""]
-        : [m.watchedOn ? "📅 " + fmtDate(m.watchedOn) : "", m.lang ? "🗣️ " + m.lang : "", m.cinema ? "📍 " + m.cinema : ""])
+        : [m.watchedOn ? "📅 " + fmtDate(m.watchedOn) : m.watchedYear ? "📅 " + m.watchedYear : "", m.lang ? "🗣️ " + m.lang : "", m.cinema ? "📍 " + m.cinema : "", m.platform ? "📺 " + m.platform : ""])
       .filter(Boolean).map(t => `<span class="pill" title="${esc(t)}">${esc(t)}</span>`).join("");
     const badge = m.wish ? `<span class="avg none">Por ver</span>` : `<span class="avg ${a == null ? "none" : ""}">★ ${fmt(a)}</span>`;
     return `<div class="card ${m.wish ? "wish" : ""}" data-id="${m.id}">
@@ -639,7 +639,7 @@ function renderStats(all) {
     list.forEach(m => { if (m.watchedOn) c[parseInt(m.watchedOn.slice(5, 7), 10) - 1]++; });
     time = sec("Por mes", MESES.map((l, i) => [l, c[i]]));
   } else if (yearFilter === "all") {
-    time = sec("Por año", countBy(list.filter(m => m.watchedOn), m => m.watchedOn.slice(0, 4)).sort((a, b) => a[0].localeCompare(b[0])));
+    time = sec("Por año", countBy(list.filter(m => yearOf(m)), m => yearOf(m)).sort((a, b) => a[0].localeCompare(b[0])));
   }
 
   box.innerHTML = `<div class="tiles">${tiles}</div>${hl ? `<h4>Destacadas</h4>${hl}` : ""}
@@ -702,6 +702,8 @@ function renderDetail(id) {
         <div><label>Precio total (€)</label>
         <input id="vPrice" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0,00" value="${m.price ?? ""}"></div>
       </div>
+      <label>Plataforma (si fue en casa)</label>
+      <input id="vPlat" placeholder="Netflix, HBO, Disney+…" value="${esc(m.platform || "")}" autocomplete="off">
       <datalist id="cinemaList">${cinemas.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
       <div class="actions"><button class="btn" id="saveVisit">Guardar visita</button></div>
     </div>
@@ -726,6 +728,7 @@ function renderDetail(id) {
       cinema: $("vCinema").value.trim() || null,
       lang: $("vLang").value || null,
       price: $("vPrice").value === "" ? null : parseFloat($("vPrice").value),
+      platform: $("vPlat").value.trim() || null,
     });
     toast("Visita guardada");
   };
@@ -829,7 +832,7 @@ async function matchRow(row, q = row.title) {
     c = [...c.filter(near), ...c.filter(x => !near(x))];
   }
   row.cands = c; row.sel = 0;
-  row.checked = c.length > 0 && !imdbExists(c[0]) && !!(row.watchedOn || row.notas?.some(n => n != null));
+  row.checked = c.length > 0 && !imdbExists(c[0]) && !!(row.watchedOn || row.watchedYear || row.notas?.some(n => n != null));
 }
 
 function renderImport() {
@@ -837,8 +840,8 @@ function renderImport() {
     const c = r.cands[r.sel];
     const exists = imdbExists(c);
     const notes = (r.notasRaw || []).map(n => n ?? "–").join(" / ");
-    const info = [r.watchedOn ? "📅 " + fmtDate(r.watchedOn) : "sin fecha", "notas " + notes].join(" · ");
-    const pending = !r.watchedOn && !(r.notas || []).some(n => n != null);
+    const info = [r.watchedOn ? "📅 " + fmtDate(r.watchedOn) : r.watchedYear ? "📅 " + r.watchedYear : "sin fecha", r.platform ? "📺 " + r.platform : "", "notas " + notes].filter(Boolean).join(" · ");
+    const pending = !r.watchedOn && !r.watchedYear && !(r.notas || []).some(n => n != null);
     return `<div class="imp ${exists || !c ? "off" : ""}">
       <input type="checkbox" data-chk="${i}" ${r.checked && c && !exists ? "checked" : ""} ${!c || exists ? "disabled" : ""}>
       <div class="grow">
@@ -902,11 +905,13 @@ $("importGo").onclick = async () => {
       try { info = await fetchDetails(id); } catch (err) { console.warn(err); }
       const ratings = {};
       PEOPLE.forEach((p, i) => { const v = r.notas?.[i]; if (typeof v === "number") ratings[p.id] = v; });
+      const comments = {};
+      PEOPLE.forEach((p, i) => { const c = r.comentarios?.[i]; if (c) comments[p.id] = c; });
       await setDoc(doc(moviesCol, id), {
         title: x.title, year: (x.release_date || "").slice(0, 4), poster: x.poster_path || null,
-        overview: x.overview || "", addedBy: me, ratings, comments: {}, createdAt: serverTimestamp(),
-        watchedOn: r.watchedOn || null, cinema: null, lang: null,
-        wish: !r.watchedOn && !Object.keys(ratings).length, ...info,
+        overview: x.overview || "", addedBy: me, ratings, comments, createdAt: serverTimestamp(),
+        watchedOn: r.watchedOn || null, watchedYear: r.watchedOn ? null : (r.watchedYear || null), platform: r.platform || null, cinema: null, lang: null,
+        wish: !r.watchedOn && !r.watchedYear && !Object.keys(ratings).length, ...info,
       });
       ok++;
     } catch (err) { console.error(err); fail.push(r.original); }
@@ -1040,11 +1045,11 @@ $("backupBtn").onclick = () => {
   toast("Copia descargada");
 };
 $("csvBtn").onclick = () => {
-  const head = ["Película", "Año", "Estado", "Fecha vista", "Cine", "Idioma", "Precio", ...PEOPLE.map(p => "Nota " + p.name), "Media", "Género", "Director", "Duración (min)", "Estreno"];
+  const head = ["Película", "Año", "Estado", "Fecha vista", "Cine", "Plataforma", "Idioma", "Precio", ...PEOPLE.map(p => "Nota " + p.name), "Media", "Género", "Director", "Duración (min)", "Estreno"];
   const cell = (v) => { const s = v == null ? "" : String(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const n = (v) => v == null ? "" : String(v).replace(".", ",");
   const rows = [...movies].sort((a, b) => dateOf(b).localeCompare(dateOf(a))).map(m => [
-    m.title, m.year, m.wish ? "Por ver" : "Vista", m.watchedOn ? fmtDate(m.watchedOn) : "", m.cinema, m.lang, n(m.price),
+    m.title, m.year, m.wish ? "Por ver" : "Vista", m.watchedOn ? fmtDate(m.watchedOn) : (m.watchedYear || ""), m.cinema, m.platform, m.lang, n(m.price),
     ...PEOPLE.map(p => n(m.ratings?.[p.id])), n(avgOf(m) == null ? null : Math.round(avgOf(m) * 10) / 10),
     (m.genres || []).join(", "), m.director, m.runtime, m.releaseDate ? fmtDate(m.releaseDate) : "",
   ].map(cell).join(";"));
@@ -1317,7 +1322,7 @@ function monthStreak(list) {
   return best;
 }
 function buildWrap(Y) {
-  const S = seenList().filter(m => (m.watchedOn || "").startsWith(Y));
+  const S = seenList().filter(m => dateOf(m).startsWith(Y));
   let gi = 0; const G = () => WGRAD[gi++ % WGRAD.length];
   if (!S.length) return [{ bg: G(), html: `<div class="big">🎞️</div><h3>Sin películas en ${Y}</h3><p>Apunta visitas con fecha y vuelve a mirar.</p>` }];
   const sl = [], [A, B] = PEOPLE, plural = (n, s, p) => n === 1 ? s : p;
@@ -1340,8 +1345,11 @@ function buildWrap(Y) {
     const top = both.map(m => ({ m, d: Math.abs(m.ratings[A.id] - m.ratings[B.id]) })).sort((x, y) => y.d - x.d)[0];
     sl.push({ bg: G(), html: `<p>⚔️ El duelo</p><h3>${esc(A.name)} ★ ${fmt(aa)} · ${esc(B.name)} ★ ${fmt(bb)}</h3><p>${aa === bb ? "Empate técnico" : esc(aa < bb ? A.name : B.name) + " es el más exigente"}</p>${top.d > 0 ? `<p class="sm">Más discutida: ${esc(top.m.title)} (${fmt(top.m.ratings[A.id])} vs ${fmt(top.m.ratings[B.id])})</p>` : ""}` });
   }
-  const mo = countBy(S, m => m.watchedOn.slice(0, 7)), st = monthStreak(S);
-  sl.push({ bg: G(), html: `<p>📅 Mes más cinéfilo</p><div class="big sm2">${monthName(mo[0][0])}</div><h3>${mo[0][1]} ${plural(mo[0][1], "película", "películas")}</h3>${st.len > 1 ? `<p class="sm">Racha: ${st.len} meses seguidos yendo al cine</p>` : ""}` });
+  const SD = S.filter(m => m.watchedOn);
+  if (SD.length) {
+    const mo = countBy(SD, m => m.watchedOn.slice(0, 7)), st = monthStreak(SD);
+    sl.push({ bg: G(), html: `<p>📅 Mes más cinéfilo</p><div class="big sm2">${monthName(mo[0][0])}</div><h3>${mo[0][1]} ${plural(mo[0][1], "película", "películas")}</h3>${st.len > 1 ? `<p class="sm">Racha: ${st.len} meses seguidos yendo al cine</p>` : ""}` });
+  }
   const next = movies.filter(m => m.wish && (m.releaseDate || "").startsWith(String(+Y + 1))).length;
   sl.push({ bg: G(), html: `<div class="big">🎞️</div><h3>¡Hasta el próximo ${+Y + 1}!</h3>${next ? `<p>Os esperan ${next} ${plural(next, "estreno pendiente", "estrenos pendientes")}</p>` : ""}` });
   return sl;
@@ -1350,7 +1358,7 @@ let wrapSlides = [], wrapI = 0, wrapYear = "";
 function openWrap(year) { wrapYear = year; wrapSlides = buildWrap(year); wrapI = 0; openM("wrapModal"); renderWrap(); }
 function renderWrap() {
   const s = wrapSlides[wrapI];
-  const years = [...new Set(seenList().map(m => (m.watchedOn || "").slice(0, 4)).filter(Boolean))].sort().reverse();
+  const years = [...new Set(seenList().map(m => dateOf(m).slice(0, 4)).filter(Boolean))].sort().reverse();
   if (!years.includes(wrapYear)) years.unshift(wrapYear);
   $("wrapModal").innerHTML = `<div class="wrap" style="background:${s.bg}">
     <div class="wprog">${wrapSlides.map((_, i) => `<i class="${i <= wrapI ? "on" : ""}"></i>`).join("")}</div>
