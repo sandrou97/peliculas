@@ -99,6 +99,14 @@
   .rate{display:flex;gap:10px;align-items:center}
   .rate input[type=range]{flex:1;padding:0;accent-color:var(--accent)}
   .rate .val{width:44px;text-align:right;font-weight:700;color:var(--accent)}
+  .rate .nudge{flex:none;width:34px;height:34px;padding:0;border-radius:50%;border:1px solid var(--line);background:var(--card2);color:var(--text);font-size:18px;font-weight:700;cursor:pointer}
+  .mhbtn{margin-top:10px;width:100%;padding:10px;border-radius:10px;border:1px dashed #d4a017;background:transparent;color:#d4a017;font-weight:800;letter-spacing:.5px;cursor:pointer}
+  .mhbtn.on{border-style:solid;color:#2a1c00;background:linear-gradient(135deg,#ffe27a,#f5b400 55%,#ffd75e);box-shadow:0 0 14px rgba(245,180,0,.55)}
+  .rate input[type=range]:disabled{opacity:.35}
+  .card.mh{border:2px solid #f5b400;box-shadow:0 0 0 1px rgba(245,180,0,.35),0 0 18px rgba(245,180,0,.45);position:relative}
+  .card.mh::after{content:"🏅";position:absolute;top:6px;right:6px;font-size:22px;filter:drop-shadow(0 1px 3px rgba(0,0,0,.6))}
+  .avg.mhb{background:linear-gradient(135deg,#ffe27a,#f5b400 55%,#ffd75e);color:#2a1c00;box-shadow:0 0 10px rgba(245,180,0,.5)}
+  .mhban{margin:10px 0;padding:10px 12px;border-radius:12px;text-align:center;font-weight:800;color:#2a1c00;background:linear-gradient(135deg,#ffe27a,#f5b400 55%,#ffd75e);box-shadow:0 0 16px rgba(245,180,0,.5)}
   .res{display:flex;gap:10px;padding:8px;border-radius:10px;cursor:pointer}
   .res:hover{background:var(--card2)}
   .res img,.res .np{width:44px;height:66px;object-fit:cover;border-radius:6px;background:var(--card2);flex:none}
@@ -564,6 +572,11 @@ function avgOf(m) {
   return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
 }
 const fmt = (n) => n == null ? "–" : (Math.round(n * 10) / 10).toString().replace(".", ",");
+// Matrícula de honor: cuenta como un 10 en las medias, pero se marca aparte
+const mhOf = (m, pid) => !!m.mh?.[pid];
+const mhN = (m) => Object.values(m.mh || {}).filter(Boolean).length;
+const isMH = (m) => mhN(m) > 0;
+const rtxt = (m, pid) => mhOf(m, pid) ? "MH 🏅" : fmt(m.ratings?.[pid]);
 const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
 
 let yearFilter = String(new Date().getFullYear()); // por defecto: el año actual
@@ -601,7 +614,7 @@ function render() {
   const list = getFiltered();
   const sort = $("sort").value;
   list.sort((a, b) => {
-    if (sort === "avg") return (avgOf(b) ?? -1) - (avgOf(a) ?? -1);
+    if (sort === "avg") return ((avgOf(b) ?? -1) + mhN(b) * 0.01) - ((avgOf(a) ?? -1) + mhN(a) * 0.01);
     if (sort === "title") return (a.title || "").localeCompare(b.title || "", "es");
     if (sort === "interest") return ((b.wish ? isum(b) : -1) - (a.wish ? isum(a) : -1)) || dateOf(b).localeCompare(dateOf(a));
     if (sort === "watched") return dateOf(b).localeCompare(dateOf(a));
@@ -614,13 +627,13 @@ function render() {
     : "Ninguna película con estos filtros.<br>Prueba otro año o “Todos los años”.";
   $("grid").innerHTML = list.map(m => {
     const a = avgOf(m);
-    const mini = m.wish ? "" : PEOPLE.map(p => `${esc(p.name)}: ${fmt(m.ratings?.[p.id])}`).join(" · ");
+    const mini = m.wish ? "" : PEOPLE.map(p => `${esc(p.name)}: ${rtxt(m, p.id)}`).join(" · ");
     const pills = (m.wish
         ? [esDate(m) ? "🎯 Estreno " + fmtDate(esDate(m)) : "🎯 Pendiente", isum(m) ? "🔥 " + isum(m) + "/" + 3 * PEOPLE.length : ""]
         : [m.watchedOn ? "📅 " + fmtDate(m.watchedOn) : m.watchedYear ? "📅 " + m.watchedYear : "", esDate(m) ? "🎬 Estreno " + fmtDate(esDate(m)) : "", m.lang ? "🗣️ " + m.lang : "", m.cinema ? "📍 " + m.cinema : "", m.platform ? "📺 " + m.platform : ""])
       .filter(Boolean).map(t => `<span class="pill" title="${esc(t)}">${esc(t)}</span>`).join("");
-    const badge = m.wish ? `<span class="avg none">Por ver</span>` : `<span class="avg ${a == null ? "none" : ""}">★ ${fmt(a)}</span>`;
-    return `<div class="card ${m.wish ? "wish" : ""}" data-id="${m.id}">
+    const badge = m.wish ? `<span class="avg none">Por ver</span>` : isMH(m) ? `<span class="avg mhb">🏅 MH · ★ ${fmt(a)}</span>` : `<span class="avg ${a == null ? "none" : ""}">★ ${fmt(a)}</span>`;
+    return `<div class="card ${m.wish ? "wish" : isMH(m) ? "mh" : ""}" data-id="${m.id}">
       ${m.poster ? `<img loading="lazy" src="${IMG}w342${m.poster}" alt="">` : `<div class="noposter">${esc(m.title)}</div>`}
       <div class="info"><div class="t">${esc(m.title)}</div><div class="y">${esc(m.year || "")}</div>
       ${badge}${mini ? `<div class="mini">${mini}</div>` : ""}
@@ -661,6 +674,7 @@ function renderStats(all) {
     [mins ? fmtRuntime(mins).replace(/ min$/, "m").replace(" h ", "h ") : "–", "En pantalla"],
     ["★ " + fmt(avgAll), "Nota media"],
     ...PEOPLE.map(p => ["★ " + fmt(mean(list.map(m => m.ratings?.[p.id]).filter(x => typeof x === "number"))), "Media " + p.name]),
+    ...(list.some(isMH) ? [["🏅 " + list.filter(isMH).length, "Matrículas de honor"]] : []),
     ...(pend ? [[pend, "Por ver"]] : []),
     ...(spent ? [[fmtEUR(spent), "Gasto en cine"]] : []),
   ].map(t => `<div class="tile"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join("");
@@ -717,7 +731,7 @@ function renderDetail(id) {
   const a = avgOf(m);
   const myRating = m.ratings?.[me] ?? 5;
   const others = PEOPLE.filter(p => p.id !== me).map(p => `
-    <div class="block"><h3>${esc(p.name)}: ★ ${fmt(m.ratings?.[p.id])}</h3>
+    <div class="block"><h3>${esc(p.name)}: ${mhOf(m, p.id) ? "🏅 Matrícula de honor" : "★ " + fmt(m.ratings?.[p.id])}</h3>
     <div class="overview" style="margin:0">${esc(m.comments?.[p.id] || "Sin comentario")}</div></div>`).join("");
 
   const metaRows = [
@@ -737,9 +751,10 @@ function renderDetail(id) {
     <div class="row">
       ${m.poster ? `<img src="${IMG}w185${m.poster}" alt="">` : ""}
       <div><h2>${esc(m.title)}</h2><div class="y" style="color:var(--muted)">${esc(m.year || "")}</div>
-      <span class="avg ${a == null ? "none" : ""}">Media ★ ${fmt(a)}</span>
+      <span class="avg ${isMH(m) ? "mhb" : a == null ? "none" : ""}">${isMH(m) ? "🏅 MH · " : ""}Media ★ ${fmt(a)}</span>
       <div class="meta">${metaRows || "Cargando ficha…"}</div></div>
     </div>
+    ${isMH(m) ? `<div class="mhban">🏅 MATRÍCULA DE HONOR 🏅<br><small>${PEOPLE.filter(p => mhOf(m, p.id)).map(p => esc(p.name)).join(" y ")}</small></div>` : ""}
     <div class="overview">${esc(m.overview || "")}</div>
 
     <div class="block"><h3>🎟️ Cuándo y dónde la vimos</h3>
@@ -760,8 +775,11 @@ function renderDetail(id) {
     </div>
 
     <div class="block mine"><h3>Tu nota (${esc(nameOf(me))})</h3>
-      <div class="rate"><input type="range" id="myRating" min="0" max="10" step="0.5" value="${myRating}">
+      <div class="rate"><button class="nudge" id="rMinus" type="button" aria-label="Bajar 0,1">−</button>
+      <input type="range" id="myRating" min="0" max="10" step="0.1" value="${myRating}">
+      <button class="nudge" id="rPlus" type="button" aria-label="Subir 0,1">+</button>
       <span class="val" id="myVal">${fmt(m.ratings?.[me])}</span></div>
+      <button class="mhbtn ${mhOf(m, me) ? "on" : ""}" id="mhBtn" type="button">🏅 MATRÍCULA DE HONOR (MH)</button>
       <textarea id="myComment" rows="3" placeholder="Tu comentario…" style="margin-top:10px">${esc(m.comments?.[me] || "")}</textarea>
       <div class="actions"><button class="btn" id="saveMine">Guardar mi nota</button></div>
     </div>
@@ -770,7 +788,17 @@ function renderDetail(id) {
     <div class="actions"><button class="btn danger" id="delBtn">Eliminar</button><button class="btn ghost" id="closeDetail">Cerrar</button></div>`;
 
   const r = $("myRating"), v = $("myVal");
-  r.oninput = () => { v.textContent = fmt(parseFloat(r.value)); };
+  let mhOn = mhOf(m, me);
+  const paintRate = () => {
+    r.disabled = mhOn; $("rMinus").disabled = mhOn; $("rPlus").disabled = mhOn;
+    $("mhBtn").classList.toggle("on", mhOn);
+    v.textContent = mhOn ? "MH" : fmt(parseFloat(r.value));
+  };
+  const nudge = (d) => { r.value = Math.min(10, Math.max(0, Math.round((parseFloat(r.value) + d) * 10) / 10)); paintRate(); };
+  r.oninput = paintRate;
+  $("rMinus").onclick = () => nudge(-0.1); $("rPlus").onclick = () => nudge(0.1);
+  $("mhBtn").onclick = () => { mhOn = !mhOn; if (mhOn) r.value = 10; paintRate(); };
+  paintRate();
   $("closeDetail").onclick = closeDetail;
   fillProviders(m);
   $("saveVisit").onclick = async () => {
@@ -785,7 +813,8 @@ function renderDetail(id) {
   };
   $("saveMine").onclick = async () => {
     await updateDoc(doc(moviesCol, id), {
-      [`ratings.${me}`]: parseFloat(r.value),
+      [`ratings.${me}`]: mhOn ? 10 : Math.round(parseFloat(r.value) * 10) / 10,
+      [`mh.${me}`]: mhOn,
       [`comments.${me}`]: $("myComment").value.trim(),
     });
     toast("Nota guardada");
@@ -1229,12 +1258,12 @@ function setGamesTab(t) {
 }
 
 // --- Adivina la nota: puntuación y marcador ---
-const guessPts = (d) => d === 0 ? 5 : d <= 0.5 ? 3 : d <= 1 ? 2 : d <= 2 ? 1 : 0;
+const guessPts = (d) => (d = Math.round(d * 10) / 10) === 0 ? 5 : d <= 0.3 ? 4 : d <= 0.5 ? 3 : d <= 1 ? 2 : d <= 2 ? 1 : 0;
 function guessStats() {
   const res = PEOPLE.map(p => ({ p, n: 0, pts: 0, err: 0, exact: 0 }));
   seenList().forEach(m => res.forEach(r => {
     const o = PEOPLE.find(x => x.id !== r.p.id), g = m.guesses?.[r.p.id], act = m.ratings?.[o.id];
-    if (num(g) && num(act)) { const d = Math.abs(g - act); r.n++; r.err += d; r.pts += guessPts(d); if (d === 0) r.exact++; }
+    if (num(g) && num(act)) { const d = Math.round(Math.abs(g - act) * 10) / 10; r.n++; r.err += d; r.pts += guessPts(d); if (d === 0) r.exact++; }
   }));
   return res;
 }
@@ -1285,22 +1314,22 @@ function renderGuess() {
   if (!m) { body.innerHTML = `<div class="rc">🎉 No quedan películas por adivinar: ${esc(o.name)} no ha puntuado más que las que ya has intentado.</div>${score}`; return; }
   const head = `<div class="row" style="margin-top:6px">${m.poster ? `<img src="${IMG}w185${m.poster}" alt="">` : ""}
     <div><h2 style="font-size:18px">${esc(m.title)}</h2><div class="sub">${esc(m.year || "")}${m.genres?.length ? " · " + esc(m.genres.slice(0, 2).join(", ")) : ""}</div>
-    <div class="sub" style="margin-top:6px">Tu nota: ★ ${fmt(m.ratings?.[me])}</div></div></div>`;
+    <div class="sub" style="margin-top:6px">Tu nota: ${mhOf(m, me) ? "🏅 MH" : "★ " + fmt(m.ratings?.[me])}</div></div></div>`;
   if (!guessRev) {
     body.innerHTML = `${head}<div class="block"><h3>¿Qué nota le puso ${esc(o.name)}?</h3>
-      <div class="rate"><input type="range" id="gRange" min="0" max="10" step="0.5" value="7"><span class="val" id="gVal">7</span></div>
+      <div class="rate"><input type="range" id="gRange" min="0" max="10" step="0.1" value="7"><span class="val" id="gVal">7</span></div>
       <div class="actions"><button class="btn" id="gGo">Adivinar</button></div></div>${score}`;
     $("gRange").oninput = () => { $("gVal").textContent = fmt(+$("gRange").value); };
     $("gGo").onclick = async () => {
       const g = +$("gRange").value, id = m.id, act = m.ratings[o.id], com = m.comments?.[o.id];
-      guessRev = { g, act, com }; // se muestra al instante; el guardado va detrás
+      guessRev = { g, act, com, mh: mhOf(m, o.id) }; // se muestra al instante; el guardado va detrás
       renderGuess();
       await updateDoc(doc(moviesCol, id), { [`guesses.${me}`]: g });
     };
   } else {
-    const d = Math.abs(guessRev.g - guessRev.act), pts = guessPts(d);
+    const d = Math.round(Math.abs(guessRev.g - guessRev.act) * 10) / 10, pts = guessPts(d);
     body.innerHTML = `${head}<div class="block"><h3>${esc(o.name)} le puso</h3>
-      <div style="font-size:42px;font-weight:800;color:var(--accent)">★ ${fmt(guessRev.act)}</div>
+      <div style="font-size:42px;font-weight:800;color:var(--accent)">${guessRev.mh ? "🏅 MH" : "★ " + fmt(guessRev.act)}</div>
       <div class="sub">Tú dijiste ${fmt(guessRev.g)} · diferencia ${fmt(d)}</div>
       <div class="rc">${d === 0 ? "🎯 ¡Clavado!" : d <= 0.5 ? "👏 Casi" : d <= 2 ? "🙂 Cerca" : "😅 Lejos"} · <b>+${pts} puntos</b></div>
       ${guessRev.com ? `<div class="overview">“${esc(guessRev.com)}”</div>` : ""}
