@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Nuestras películas</title>
+<style>
+  :root{--bg:#0f1115;--card:#181b22;--card2:#1f232c;--text:#eceef2;--muted:#8b93a3;--accent:#f5b83d;--danger:#e5484d;--line:#2a2f3a}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  button,input,select,textarea{font:inherit;color:inherit}
+  .hidden{display:none!important}
+  header{position:sticky;top:0;z-index:5;background:rgba(15,17,21,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line);padding:12px 16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;flex:1;min-width:140px}
+  .who{font-size:13px;color:var(--muted);cursor:pointer}
+  .btn{background:var(--accent);color:#111;border:0;border-radius:10px;padding:10px 14px;font-weight:600;cursor:pointer}
+  .btn.ghost{background:var(--card2);color:var(--text)}
+  .btn.danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
+  input,select,textarea{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+  main{max-width:960px;margin:0 auto;padding:16px}
+  .tools{display:flex;gap:8px;margin-bottom:16px}
+  .tools input{flex:2}.tools select{flex:1}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:14px}
+  .card{background:var(--card);border-radius:12px;overflow:hidden;cursor:pointer;border:1px solid var(--line)}
+  .card img,.noposter{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:var(--card2)}
+  .noposter{display:flex;align-items:center;justify-content:center;color:var(--muted);padding:8px;text-align:center}
+  .card .info{padding:10px}
+  .card .t{font-weight:600;font-size:14px;margin-bottom:2px}
+  .card .y{color:var(--muted);font-size:12px}
+  .avg{display:inline-block;margin-top:6px;background:var(--accent);color:#111;border-radius:999px;padding:2px 10px;font-weight:700;font-size:13px}
+  .avg.none{background:var(--card2);color:var(--muted)}
+  .mini{font-size:12px;color:var(--muted);margin-top:4px}
+  .empty{text-align:center;color:var(--muted);padding:60px 16px}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+  @media(min-width:700px){.overlay{align-items:center}}
+  .sheet{background:var(--card);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px}
+  @media(min-width:700px){.sheet{border-radius:18px}}
+  .row{display:flex;gap:14px}
+  .row img{width:110px;border-radius:10px;align-self:flex-start}
+  .sheet h2{margin:0 0 4px;font-size:20px}
+  .overview{color:var(--muted);font-size:14px;margin:10px 0}
+  .block{background:var(--card2);border-radius:12px;padding:12px;margin-top:12px}
+  .block h3{margin:0 0 8px;font-size:14px}
+  .block.mine{border:1px solid var(--accent)}
+  .rate{display:flex;gap:10px;align-items:center}
+  .rate input[type=range]{flex:1;padding:0;accent-color:var(--accent)}
+  .rate .val{width:44px;text-align:right;font-weight:700;color:var(--accent)}
+  .res{display:flex;gap:10px;padding:8px;border-radius:10px;cursor:pointer}
+  .res:hover{background:var(--card2)}
+  .res img,.res .np{width:44px;height:66px;object-fit:cover;border-radius:6px;background:var(--card2);flex:none}
+  .res .sub{color:var(--muted);font-size:12px}
+  .gate{max-width:380px;margin:12vh auto;padding:20px}
+  .gate h1{margin-top:0}
+  .gate label{display:block;margin:14px 0 6px;color:var(--muted);font-size:14px}
+  .err{color:var(--danger);font-size:14px;margin-top:10px}
+  .actions{display:flex;gap:8px;margin-top:14px}.actions .btn{flex:1}
+</style>
+</head>
+<body>
+
+<!-- Pantalla de entrada -->
+<div id="gate" class="gate">
+  <h1>🎬 Nuestras películas</h1>
+  <label>Código compartido</label>
+  <input id="codeInput" placeholder="mínimo 6 caracteres" autocapitalize="off" autocomplete="off">
+  <label>¿Quién eres?</label>
+  <select id="whoSelect"></select>
+  <div class="actions"><button class="btn" id="enterBtn">Entrar</button></div>
+  <div id="gateErr" class="err hidden"></div>
+</div>
+
+<!-- App -->
+<div id="app" class="hidden">
+  <header>
+    <h1>🎬 Nuestras películas</h1>
+    <span class="who" id="whoLabel" title="Cambiar de usuario / salir"></span>
+    <button class="btn" id="addBtn">+ Añadir</button>
+  </header>
+  <main>
+    <div class="tools">
+      <input id="filter" placeholder="Buscar en nuestra lista…">
+      <select id="sort">
+        <option value="recent">Más recientes</option>
+        <option value="avg">Mejor nota media</option>
+        <option value="title">Título A-Z</option>
+      </select>
+    </div>
+    <div id="grid" class="grid"></div>
+    <div id="empty" class="empty hidden">Aún no hay películas.<br>Pulsa “+ Añadir” para empezar.</div>
+  </main>
+</div>
+
+<!-- Modal: añadir -->
+<div id="addModal" class="overlay hidden">
+  <div class="sheet">
+    <h2>Añadir película</h2>
+    <input id="searchInput" placeholder="Busca por título…" style="margin-top:10px">
+    <div id="results" style="margin-top:10px"></div>
+    <div class="actions"><button class="btn ghost" id="closeAdd">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Modal: detalle -->
+<div id="detailModal" class="overlay hidden">
+  <div class="sheet" id="detailSheet"></div>
+</div>
+
+<script type="module">
+import { firebaseConfig, TMDB_API_KEY, PEOPLE } from "./config.js";
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
+import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const IMG = "https://image.tmdb.org/t/p/";
+
+let db, moviesCol, unsub = null;
+let movies = [];
+let me = null;       // id de la persona
+let room = null;     // código
+
+// ---------- Entrada ----------
+$("whoSelect").innerHTML = PEOPLE.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+
+function enter(code, who) {
+  code = code.trim().toLowerCase();
+  if (code.length < 6) { showErr("El código debe tener al menos 6 caracteres."); return; }
+  if (firebaseConfig.projectId === "PEGA_AQUI") { showErr("Falta rellenar config.js (ver README)."); return; }
+  room = code; me = who;
+  localStorage.setItem("peli_session", JSON.stringify({ code, who }));
+  if (!db) db = getFirestore(initializeApp(firebaseConfig));
+  moviesCol = collection(db, "rooms", room, "movies");
+  $("gate").classList.add("hidden");
+  $("app").classList.remove("hidden");
+  $("whoLabel").textContent = "👤 " + nameOf(me) + " · salir";
+  if (unsub) unsub();
+  unsub = onSnapshot(moviesCol, snap => {
+    movies = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    render();
+    if (openId) renderDetail(openId);
+  }, err => { console.error(err); alert("No se pudo conectar con Firebase. Revisa config.js y las reglas."); });
+}
+function showErr(m){ const e=$("gateErr"); e.textContent=m; e.classList.remove("hidden"); }
+$("enterBtn").onclick = () => enter($("codeInput").value, $("whoSelect").value);
+$("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") $("enterBtn").click(); });
+$("whoLabel").onclick = () => { localStorage.removeItem("peli_session"); location.reload(); };
+
+const nameOf = (id) => (PEOPLE.find(p => p.id === id) || {}).name || id;
+
+try {
+  const s = JSON.parse(localStorage.getItem("peli_session") || "null");
+  if (s && PEOPLE.some(p => p.id === s.who)) enter(s.code, s.who);
+} catch {}
+
+// ---------- Lista ----------
+function avgOf(m) {
+  const v = Object.values(m.ratings || {}).filter(x => typeof x === "number");
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : null;
+}
+const fmt = (n) => n == null ? "–" : (Math.round(n * 10) / 10).toString().replace(".", ",");
+
+function render() {
+  const q = $("filter").value.trim().toLowerCase();
+  let list = movies.filter(m => !q || (m.title || "").toLowerCase().includes(q));
+  const sort = $("sort").value;
+  list.sort((a, b) => {
+    if (sort === "avg") return (avgOf(b) ?? -1) - (avgOf(a) ?? -1);
+    if (sort === "title") return (a.title || "").localeCompare(b.title || "", "es");
+    return (b.createdAt?.seconds ?? 9e9) - (a.createdAt?.seconds ?? 9e9);
+  });
+  $("empty").classList.toggle("hidden", movies.length > 0);
+  $("grid").innerHTML = list.map(m => {
+    const a = avgOf(m);
+    const mini = PEOPLE.map(p => `${esc(p.name)}: ${fmt(m.ratings?.[p.id])}`).join(" · ");
+    return `<div class="card" data-id="${m.id}">
+      ${m.poster ? `<img loading="lazy" src="${IMG}w342${m.poster}" alt="">` : `<div class="noposter">${esc(m.title)}</div>`}
+      <div class="info"><div class="t">${esc(m.title)}</div><div class="y">${esc(m.year || "")}</div>
+      <span class="avg ${a == null ? "none" : ""}">★ ${fmt(a)}</span><div class="mini">${mini}</div></div></div>`;
+  }).join("");
+}
+$("grid").onclick = (e) => { const c = e.target.closest(".card"); if (c) openDetail(c.dataset.id); };
+$("filter").oninput = render; $("sort").onchange = render;
+
+// ---------- Detalle ----------
+let openId = null;
+function openDetail(id) { openId = id; renderDetail(id); $("detailModal").classList.remove("hidden"); }
+function closeDetail() { openId = null; $("detailModal").classList.add("hidden"); }
+$("detailModal").onclick = (e) => { if (e.target === $("detailModal")) closeDetail(); };
+
+function renderDetail(id) {
+  const m = movies.find(x => x.id === id);
+  if (!m) { closeDetail(); return; }
+  const a = avgOf(m);
+  const myRating = m.ratings?.[me] ?? 5;
+  const others = PEOPLE.filter(p => p.id !== me).map(p => `
+    <div class="block"><h3>${esc(p.name)}: ★ ${fmt(m.ratings?.[p.id])}</h3>
+    <div class="overview" style="margin:0">${esc(m.comments?.[p.id] || "Sin comentario")}</div></div>`).join("");
+  // No re-renderizar mientras se escribe: conservar el foco si el usuario está editando
+  const typing = document.activeElement && document.activeElement.id === "myComment";
+  if (typing) return;
+  $("detailSheet").innerHTML = `
+    <div class="row">
+      ${m.poster ? `<img src="${IMG}w185${m.poster}" alt="">` : ""}
+      <div><h2>${esc(m.title)}</h2><div class="y" style="color:var(--muted)">${esc(m.year || "")}</div>
+      <span class="avg ${a == null ? "none" : ""}">Media ★ ${fmt(a)}</span></div>
+    </div>
+    <div class="overview">${esc(m.overview || "")}</div>
+    <div class="block mine"><h3>Tu nota (${esc(nameOf(me))})</h3>
+      <div class="rate"><input type="range" id="myRating" min="0" max="10" step="0.5" value="${myRating}">
+      <span class="val" id="myVal">${fmt(m.ratings?.[me])}</span></div>
+      <textarea id="myComment" rows="3" placeholder="Tu comentario…" style="margin-top:10px">${esc(m.comments?.[me] || "")}</textarea>
+      <div class="actions"><button class="btn" id="saveMine">Guardar mi nota</button></div>
+    </div>
+    ${others}
+    <div class="actions"><button class="btn danger" id="delBtn">Eliminar</button><button class="btn ghost" id="closeDetail">Cerrar</button></div>`;
+  const r = $("myRating"), v = $("myVal");
+  r.oninput = () => { v.textContent = fmt(parseFloat(r.value)); };
+  $("closeDetail").onclick = closeDetail;
+  $("saveMine").onclick = async () => {
+    await updateDoc(doc(moviesCol, id), {
+      [`ratings.${me}`]: parseFloat(r.value),
+      [`comments.${me}`]: $("myComment").value.trim(),
+    });
+    $("saveMine").textContent = "¡Guardado!";
+    setTimeout(() => { const b = $("saveMine"); if (b) b.textContent = "Guardar mi nota"; }, 1200);
+  };
+  $("delBtn").onclick = async () => {
+    if (confirm(`¿Eliminar “${m.title}” para los dos?`)) { await deleteDoc(doc(moviesCol, id)); closeDetail(); }
+  };
+}
+
+// ---------- Añadir (TMDB) ----------
+let t = null;
+$("addBtn").onclick = () => { $("addModal").classList.remove("hidden"); $("searchInput").focus(); };
+$("closeAdd").onclick = () => $("addModal").classList.add("hidden");
+$("addModal").onclick = (e) => { if (e.target === $("addModal")) $("addModal").classList.add("hidden"); };
+$("searchInput").oninput = () => { clearTimeout(t); t = setTimeout(search, 350); };
+
+async function search() {
+  const q = $("searchInput").value.trim();
+  const box = $("results");
+  if (q.length < 2) { box.innerHTML = ""; return; }
+  if (TMDB_API_KEY === "PEGA_AQUI") { box.innerHTML = `<div class="err">Falta la clave de TMDB en config.js</div>`; return; }
+  try {
+    const r = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=es-ES&include_adult=false&query=${encodeURIComponent(q)}`);
+    const data = await r.json();
+    const res = (data.results || []).slice(0, 8);
+    box.innerHTML = res.length ? res.map(x => `
+      <div class="res" data-id="${x.id}">
+        ${x.poster_path ? `<img src="${IMG}w92${x.poster_path}" alt="">` : `<div class="np"></div>`}
+        <div><div>${esc(x.title)}</div><div class="sub">${esc((x.release_date || "").slice(0, 4))} · ${esc(x.original_title)}</div></div>
+      </div>`).join("") : `<div class="sub" style="color:var(--muted)">Sin resultados</div>`;
+    box._res = res;
+  } catch { box.innerHTML = `<div class="err">Error al buscar. ¿Clave de TMDB correcta?</div>`; }
+}
+$("results").onclick = async (e) => {
+  const el = e.target.closest(".res"); if (!el) return;
+  const x = ($("results")._res || []).find(r => String(r.id) === el.dataset.id); if (!x) return;
+  const id = String(x.id);
+  if (movies.some(m => m.id === id)) { alert("Esa película ya está en la lista."); return; }
+  await setDoc(doc(moviesCol, id), {
+    title: x.title, year: (x.release_date || "").slice(0, 4), poster: x.poster_path || null,
+    overview: x.overview || "", addedBy: me, ratings: {}, comments: {}, createdAt: serverTimestamp(),
+  });
+  $("addModal").classList.add("hidden");
+  $("searchInput").value = ""; $("results").innerHTML = "";
+  openDetail(id);
+};
+</script>
+</body>
+</html>
