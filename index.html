@@ -168,11 +168,23 @@
 <!-- Pantalla de entrada -->
 <div id="gate" class="gate">
   <h1>🎬 Nuestras películas</h1>
-  <label>Código compartido</label>
-  <input id="codeInput" placeholder="mínimo 6 caracteres" autocapitalize="off" autocomplete="off">
-  <label>¿Quién eres?</label>
-  <select id="whoSelect"></select>
-  <div class="actions"><button class="btn" id="enterBtn">Entrar</button></div>
+  <div id="gStep1">
+    <label>Código del grupo</label>
+    <input id="codeInput" placeholder="mínimo 6 caracteres" autocapitalize="off" autocomplete="off">
+    <div class="sub" style="margin-top:8px">Cada código es un grupo con sus propias películas. Si el código es nuevo, podrás crear el grupo.</div>
+    <div class="actions"><button class="btn" id="nextBtn">Continuar</button></div>
+  </div>
+  <div id="gStepWho" class="hidden">
+    <label>¿Quién eres?</label>
+    <select id="whoSelect"></select>
+    <div class="actions"><button class="btn ghost" id="backBtn1">Atrás</button><button class="btn" id="enterBtn">Entrar</button></div>
+  </div>
+  <div id="gStepNew" class="hidden">
+    <div class="sub">Este código es nuevo. Crea el grupo con los dos nombres:</div>
+    <label>Primera persona</label><input id="newP1" placeholder="Nombre" autocomplete="off">
+    <label>Segunda persona</label><input id="newP2" placeholder="Nombre" autocomplete="off">
+    <div class="actions"><button class="btn ghost" id="backBtn2">Atrás</button><button class="btn" id="createBtn">Crear grupo</button></div>
+  </div>
   <div id="gateErr" class="err hidden"></div>
 </div>
 
@@ -193,6 +205,7 @@
       <button id="csvBtn">📊 Exportar a Excel (CSV)</button>
       <button id="restoreBtn">♻️ Restaurar copia</button>
       <hr>
+      <button id="groupBtn">👥 Grupo: nombres y cines</button>
       <button id="themeBtn">🌓 Tema: Auto</button>
       <button id="installBtn">📲 Instalar en el móvil</button>
       <button id="whoLabel" title="Cambiar de usuario / salir"></button>
@@ -253,6 +266,21 @@
   </div>
 </div>
 
+<!-- Modal: grupo -->
+<div id="groupModal" class="overlay hidden">
+  <div class="sheet">
+    <h2>👥 Grupo</h2>
+    <div class="sub">Código: <b id="grpCode"></b>. Lo ve y edita quien tenga el código.</div>
+    <div class="block">
+      <label>Persona 1</label><input id="grpN1" autocomplete="off">
+      <label>Persona 2</label><input id="grpN2" autocomplete="off">
+      <label>Cines sugeridos (uno por línea)</label><textarea id="grpCin" rows="5"></textarea>
+    </div>
+    <div class="sub" style="margin-top:8px">Cambiar un nombre no afecta a las notas ya guardadas.</div>
+    <div class="actions"><button class="btn" id="grpSave">Guardar</button><button class="btn ghost" id="grpClose">Cerrar</button></div>
+  </div>
+</div>
+
 <!-- Modal: juegos -->
 <div id="gamesModal" class="overlay hidden">
   <div class="sheet wide">
@@ -298,9 +326,9 @@
 </div>
 
 <script type="module">
-import { firebaseConfig, TMDB_API_KEY, PEOPLE } from "./config.js";
+import { firebaseConfig, TMDB_API_KEY, PEOPLE as DEFAULT_PEOPLE } from "./config.js";
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp }
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 // Cines sugeridos (puedes escribir cualquier otro al registrar la visita;
@@ -334,17 +362,71 @@ let movies = [];
 let me = null;       // id de la persona
 let room = null;     // código
 
-// ---------- Entrada ----------
-$("whoSelect").innerHTML = PEOPLE.map(p => `<option value="${p.id}">${esc(p.name)}</option>`).join("");
+// ---------- Entrada y grupos ----------
+// Cada código es un grupo con sus dos personas y sus cines sugeridos, guardados en
+// rooms/{código}/meta/config. Los grupos anteriores a esta función (sin ese documento
+// pero con películas) siguen usando los nombres de config.js.
+let PEOPLE = DEFAULT_PEOPLE;
+let roomCinemas = DEFAULT_CINEMAS;
+let pendingCode = null, unsubMeta = null;
+const nameOf = (id) => (PEOPLE.find(p => p.id === id) || {}).name || id;
+const fbDb = () => (db ||= getFirestore(initializeApp(firebaseConfig)));
+const metaRef = (code) => doc(fbDb(), "rooms", code, "meta", "config");
+const validCfg = (c) => c && Array.isArray(c.people) && c.people.length === 2 && c.people.every(p => p && p.id && p.name);
 
-function enter(code, who) {
-  code = code.trim().toLowerCase();
+function applyRoom(cfg) { PEOPLE = cfg.people; roomCinemas = Array.isArray(cfg.cinemas) ? cfg.cinemas : []; }
+async function loadRoom(code) {
+  let snap = null;
+  try { snap = await getDoc(metaRef(code)); } catch (e) { console.warn("Sin acceso a la configuración del grupo", e); }
+  if (snap?.exists() && validCfg(snap.data())) return snap.data();
+  const ms = await getDocs(collection(fbDb(), "rooms", code, "movies"));
+  if (!ms.empty) { // grupo anterior: se queda con los nombres de config.js y se guarda la configuración
+    const cfg = { people: DEFAULT_PEOPLE, cinemas: DEFAULT_CINEMAS };
+    try { await setDoc(metaRef(code), cfg); } catch (e) { console.warn(e); }
+    return cfg;
+  }
+  return null; // código nuevo
+}
+function showStep(id) {
+  ["gStep1", "gStepWho", "gStepNew"].forEach(x => $(x).classList.toggle("hidden", x !== id));
+  $("gateErr").classList.add("hidden");
+}
+function showErr(m) { const e = $("gateErr"); e.textContent = m; e.classList.remove("hidden"); }
+function fillWho(selected) {
+  $("whoSelect").innerHTML = PEOPLE.map(p => `<option value="${p.id}" ${p.id === selected ? "selected" : ""}>${esc(p.name)}</option>`).join("");
+}
+
+$("nextBtn").onclick = async () => {
+  const code = $("codeInput").value.trim().toLowerCase();
   if (code.length < 6) { showErr("El código debe tener al menos 6 caracteres."); return; }
   if (firebaseConfig.projectId === "PEGA_AQUI") { showErr("Falta rellenar config.js (ver README)."); return; }
+  $("nextBtn").disabled = true;
+  try {
+    const cfg = await loadRoom(code);
+    pendingCode = code;
+    if (cfg) { applyRoom(cfg); fillWho(); showStep("gStepWho"); }
+    else showStep("gStepNew");
+  } catch (e) { console.error(e); showErr("No se pudo conectar con Firebase. Revisa config.js y las reglas."); }
+  $("nextBtn").disabled = false;
+};
+$("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") $("nextBtn").click(); });
+$("backBtn1").onclick = $("backBtn2").onclick = () => showStep("gStep1");
+$("createBtn").onclick = async () => {
+  const n1 = $("newP1").value.trim(), n2 = $("newP2").value.trim();
+  if (!n1 || !n2) { showErr("Escribe los dos nombres."); return; }
+  if (n1.toLowerCase() === n2.toLowerCase()) { showErr("Los dos nombres deben ser distintos."); return; }
+  const cfg = { people: [{ id: "p1", name: n1 }, { id: "p2", name: n2 }], cinemas: [] };
+  try { await setDoc(metaRef(pendingCode), cfg); }
+  catch (e) { console.error(e); showErr("No se pudo crear el grupo. Publica las reglas nuevas de Firebase (archivo firestore.rules) y vuelve a intentarlo."); return; }
+  applyRoom(cfg); fillWho(); showStep("gStepWho");
+};
+$("enterBtn").onclick = () => enter(pendingCode, $("whoSelect").value);
+$("whoLabel").onclick = () => { localStorage.removeItem("peli_session"); location.reload(); };
+
+function enter(code, who) {
   room = code; me = who;
   localStorage.setItem("peli_session", JSON.stringify({ code, who }));
-  if (!db) db = getFirestore(initializeApp(firebaseConfig));
-  moviesCol = collection(db, "rooms", room, "movies");
+  moviesCol = collection(fbDb(), "rooms", room, "movies");
   $("gate").classList.add("hidden");
   $("app").classList.remove("hidden");
   $("whoLabel").textContent = "👤 " + nameOf(me) + " · salir";
@@ -356,18 +438,46 @@ function enter(code, who) {
     if (!$("upModal").classList.contains("hidden")) renderUpcoming();
     backfill();
   }, err => { console.error(err); alert("No se pudo conectar con Firebase. Revisa config.js y las reglas."); });
+  // si el otro cambia los nombres o los cines, se ve al momento
+  if (unsubMeta) unsubMeta();
+  unsubMeta = onSnapshot(metaRef(room), snap => {
+    if (!snap.exists() || !validCfg(snap.data())) return;
+    applyRoom(snap.data());
+    $("whoLabel").textContent = "👤 " + nameOf(me) + " · salir";
+    render(); if (openId) renderDetail(openId);
+  }, err => console.warn("Configuración del grupo no disponible", err));
 }
-function showErr(m){ const e=$("gateErr"); e.textContent=m; e.classList.remove("hidden"); }
-$("enterBtn").onclick = () => enter($("codeInput").value, $("whoSelect").value);
-$("codeInput").addEventListener("keydown", e => { if (e.key === "Enter") $("enterBtn").click(); });
-$("whoLabel").onclick = () => { localStorage.removeItem("peli_session"); location.reload(); };
 
-const nameOf = (id) => (PEOPLE.find(p => p.id === id) || {}).name || id;
+// Ajustes del grupo (nombres y cines)
+$("groupBtn").onclick = () => {
+  $("grpCode").textContent = room;
+  $("grpN1").value = PEOPLE[0].name; $("grpN2").value = PEOPLE[1].name;
+  $("grpCin").value = [...new Set([...roomCinemas, ...movies.map(m => m.cinema).filter(Boolean)])].join("\n");
+  $("groupModal").classList.remove("hidden");
+};
+$("grpClose").onclick = () => $("groupModal").classList.add("hidden");
+$("groupModal").onclick = (e) => { if (e.target === $("groupModal")) $("groupModal").classList.add("hidden"); };
+$("grpSave").onclick = async () => {
+  const n1 = $("grpN1").value.trim(), n2 = $("grpN2").value.trim();
+  if (!n1 || !n2 || n1.toLowerCase() === n2.toLowerCase()) { alert("Escribe dos nombres distintos."); return; }
+  const cinemas = [...new Set($("grpCin").value.split("\n").map(x => x.trim()).filter(Boolean))];
+  const cfg = { people: [{ id: PEOPLE[0].id, name: n1 }, { id: PEOPLE[1].id, name: n2 }], cinemas };
+  try { await setDoc(metaRef(room), cfg); } catch (e) { console.error(e); alert("No se pudo guardar. ¿Están publicadas las reglas nuevas de Firebase?"); return; }
+  applyRoom(cfg);
+  $("whoLabel").textContent = "👤 " + nameOf(me) + " · salir";
+  render(); if (openId) renderDetail(openId);
+  $("groupModal").classList.add("hidden"); toast("Grupo guardado");
+};
 
-try {
-  const s = JSON.parse(localStorage.getItem("peli_session") || "null");
-  if (s && PEOPLE.some(p => p.id === s.who)) enter(s.code, s.who);
-} catch {}
+// Sesión recordada: se vuelve a cargar la configuración del grupo antes de entrar
+(async () => {
+  try {
+    const s = JSON.parse(localStorage.getItem("peli_session") || "null");
+    if (!s?.code || firebaseConfig.projectId === "PEGA_AQUI") return;
+    const cfg = await loadRoom(s.code);
+    if (cfg && cfg.people.some(p => p.id === s.who)) { applyRoom(cfg); enter(s.code, s.who); }
+  } catch (e) { console.warn(e); }
+})();
 
 // ---------- TMDB: ficha de la película ----------
 async function fetchDetails(id) {
@@ -568,7 +678,7 @@ function renderDetail(id) {
   ].filter(r => r[1]).map(r => `<div><b>${r[0]}:</b> ${esc(r[1])}</div>`).join("");
 
   // Sugerencias de cine: las de por defecto + las ya usadas
-  const cinemas = [...new Set([...DEFAULT_CINEMAS, ...movies.map(x => x.cinema).filter(Boolean)])];
+  const cinemas = [...new Set([...roomCinemas, ...movies.map(x => x.cinema).filter(Boolean)])];
   const langOpts = ["", ...LANGS, ...(m.lang && !LANGS.includes(m.lang) ? [m.lang] : [])]
     .map(l => `<option value="${esc(l)}" ${l === (m.lang || "") ? "selected" : ""}>${l || "—"}</option>`).join("");
 
