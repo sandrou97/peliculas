@@ -17,6 +17,7 @@
   .btn.ghost{background:var(--card2);color:var(--text)}
   .btn.danger{background:transparent;color:var(--danger);border:1px solid var(--danger)}
   input,select,textarea{background:var(--card2);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%}
+  input[type=date]{color-scheme:dark}
   main{max-width:960px;margin:0 auto;padding:16px}
   .tools{display:flex;gap:8px;margin-bottom:16px}
   .tools input{flex:2}.tools select{flex:1}
@@ -30,6 +31,7 @@
   .avg{display:inline-block;margin-top:6px;background:var(--accent);color:#111;border-radius:999px;padding:2px 10px;font-weight:700;font-size:13px}
   .avg.none{background:var(--card2);color:var(--muted)}
   .mini{font-size:12px;color:var(--muted);margin-top:4px}
+  .tag{display:inline-block;background:var(--card2);border-radius:6px;padding:1px 6px;font-size:11px;color:var(--text);margin-left:4px}
   .empty{text-align:center;color:var(--muted);padding:60px 16px}
   .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:20;display:flex;align-items:flex-end;justify-content:center}
   @media(min-width:700px){.overlay{align-items:center}}
@@ -38,10 +40,15 @@
   .row{display:flex;gap:14px}
   .row img{width:110px;border-radius:10px;align-self:flex-start}
   .sheet h2{margin:0 0 4px;font-size:20px}
+  .meta{margin:8px 0;font-size:13px;color:var(--muted)}
+  .meta b{color:var(--text);font-weight:600}
   .overview{color:var(--muted);font-size:14px;margin:10px 0}
   .block{background:var(--card2);border-radius:12px;padding:12px;margin-top:12px}
   .block h3{margin:0 0 8px;font-size:14px}
   .block.mine{border:1px solid var(--accent)}
+  .block label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
+  .block input,.block select,.block textarea{background:var(--card)}
+  .two{display:flex;gap:8px}.two>div{flex:1}
   .rate{display:flex;gap:10px;align-items:center}
   .rate input[type=range]{flex:1;padding:0;accent-color:var(--accent)}
   .rate .val{width:44px;text-align:right;font-weight:700;color:var(--accent)}
@@ -54,6 +61,7 @@
   .gate label{display:block;margin:14px 0 6px;color:var(--muted);font-size:14px}
   .err{color:var(--danger);font-size:14px;margin-top:10px}
   .actions{display:flex;gap:8px;margin-top:14px}.actions .btn{flex:1}
+  .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--accent);color:#111;padding:10px 18px;border-radius:999px;font-weight:600;z-index:50}
 </style>
 </head>
 <body>
@@ -78,9 +86,10 @@
   </header>
   <main>
     <div class="tools">
-      <input id="filter" placeholder="Buscar en nuestra lista…">
+      <input id="filter" placeholder="Buscar (título, cine, director…)">
       <select id="sort">
-        <option value="recent">Más recientes</option>
+        <option value="watched">Fecha en que la vimos</option>
+        <option value="recent">Añadidas recientemente</option>
         <option value="avg">Mejor nota media</option>
         <option value="title">Título A-Z</option>
       </select>
@@ -111,9 +120,31 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/fireba
 import { getFirestore, collection, doc, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
+// Cines sugeridos (puedes escribir cualquier otro al registrar la visita;
+// los que uséis se añaden solos a las sugerencias). Edita esta lista a tu gusto.
+const DEFAULT_CINEMAS = [
+  "Kinepolis Alicante",
+  "Kinepolis ScreenX Alicante",
+  "Colci Benidorm",
+  "Cinesa",
+  "Cine ABC",
+  "Kinepolis IMAX Valencia",
+];
+const LANGS = ["Español", "VOSE", "VO"];
+
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const IMG = "https://image.tmdb.org/t/p/";
+const todayStr = () => new Date().toLocaleDateString("sv"); // YYYY-MM-DD en hora local
+const fmtDate = (s) => { if (!s) return ""; const [y, m, d] = s.split("-"); return `${d}/${m}/${y}`; };
+const fmtRuntime = (n) => n ? `${Math.floor(n / 60)} h ${String(n % 60).padStart(2, "0")} min` : "";
+
+function toast(msg) {
+  const el = document.createElement("div");
+  el.className = "toast"; el.textContent = msg;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1400);
+}
 
 let db, moviesCol, unsub = null;
 let movies = [];
@@ -139,6 +170,7 @@ function enter(code, who) {
     movies = snap.docs.map(d => ({ id: d.id, ...d.data() }));
     render();
     if (openId) renderDetail(openId);
+    backfill();
   }, err => { console.error(err); alert("No se pudo conectar con Firebase. Revisa config.js y las reglas."); });
 }
 function showErr(m){ const e=$("gateErr"); e.textContent=m; e.classList.remove("hidden"); }
@@ -153,6 +185,30 @@ try {
   if (s && PEOPLE.some(p => p.id === s.who)) enter(s.code, s.who);
 } catch {}
 
+// ---------- TMDB: ficha de la película ----------
+async function fetchDetails(id) {
+  const r = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&language=es-ES&append_to_response=credits`);
+  if (!r.ok) throw new Error("TMDB " + r.status);
+  const d = await r.json();
+  return {
+    releaseDate: d.release_date || "",
+    genres: (d.genres || []).map(g => g.name),
+    director: (d.credits?.crew || []).filter(c => c.job === "Director").map(c => c.name).join(", "),
+    runtime: d.runtime || null,
+  };
+}
+// Rellena la ficha de las películas antiguas que aún no la tienen
+const backfilled = new Set();
+async function backfill() {
+  if (TMDB_API_KEY === "PEGA_AQUI") return;
+  for (const m of movies) {
+    if (m.releaseDate !== undefined || backfilled.has(m.id)) continue;
+    backfilled.add(m.id);
+    try { await updateDoc(doc(moviesCol, m.id), await fetchDetails(m.id)); }
+    catch (e) { console.warn("No se pudo completar", m.title, e); }
+  }
+}
+
 // ---------- Lista ----------
 function avgOf(m) {
   const v = Object.values(m.ratings || {}).filter(x => typeof x === "number");
@@ -162,21 +218,25 @@ const fmt = (n) => n == null ? "–" : (Math.round(n * 10) / 10).toString().repl
 
 function render() {
   const q = $("filter").value.trim().toLowerCase();
-  let list = movies.filter(m => !q || (m.title || "").toLowerCase().includes(q));
+  let list = movies.filter(m => !q ||
+    [m.title, m.cinema, m.director, m.lang, ...(m.genres || [])].some(x => (x || "").toLowerCase().includes(q)));
   const sort = $("sort").value;
   list.sort((a, b) => {
     if (sort === "avg") return (avgOf(b) ?? -1) - (avgOf(a) ?? -1);
     if (sort === "title") return (a.title || "").localeCompare(b.title || "", "es");
+    if (sort === "watched") return (b.watchedOn || "").localeCompare(a.watchedOn || "");
     return (b.createdAt?.seconds ?? 9e9) - (a.createdAt?.seconds ?? 9e9);
   });
   $("empty").classList.toggle("hidden", movies.length > 0);
   $("grid").innerHTML = list.map(m => {
     const a = avgOf(m);
     const mini = PEOPLE.map(p => `${esc(p.name)}: ${fmt(m.ratings?.[p.id])}`).join(" · ");
+    const seen = [m.watchedOn ? fmtDate(m.watchedOn) : "", m.lang ? `<span class="tag">${esc(m.lang)}</span>` : ""].filter(Boolean).join(" ");
     return `<div class="card" data-id="${m.id}">
       ${m.poster ? `<img loading="lazy" src="${IMG}w342${m.poster}" alt="">` : `<div class="noposter">${esc(m.title)}</div>`}
       <div class="info"><div class="t">${esc(m.title)}</div><div class="y">${esc(m.year || "")}</div>
-      <span class="avg ${a == null ? "none" : ""}">★ ${fmt(a)}</span><div class="mini">${mini}</div></div></div>`;
+      <span class="avg ${a == null ? "none" : ""}">★ ${fmt(a)}</span><div class="mini">${mini}</div>
+      ${seen ? `<div class="mini">${seen}</div>` : ""}</div></div>`;
   }).join("");
 }
 $("grid").onclick = (e) => { const c = e.target.closest(".card"); if (c) openDetail(c.dataset.id); };
@@ -191,21 +251,48 @@ $("detailModal").onclick = (e) => { if (e.target === $("detailModal")) closeDeta
 function renderDetail(id) {
   const m = movies.find(x => x.id === id);
   if (!m) { closeDetail(); return; }
+  // No re-renderizar mientras alguien está escribiendo en el formulario
+  const ae = document.activeElement;
+  if (ae && $("detailSheet").contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) return;
+
   const a = avgOf(m);
   const myRating = m.ratings?.[me] ?? 5;
   const others = PEOPLE.filter(p => p.id !== me).map(p => `
     <div class="block"><h3>${esc(p.name)}: ★ ${fmt(m.ratings?.[p.id])}</h3>
     <div class="overview" style="margin:0">${esc(m.comments?.[p.id] || "Sin comentario")}</div></div>`).join("");
-  // No re-renderizar mientras se escribe: conservar el foco si el usuario está editando
-  const typing = document.activeElement && document.activeElement.id === "myComment";
-  if (typing) return;
+
+  const metaRows = [
+    ["Estreno", fmtDate(m.releaseDate)],
+    ["Género", (m.genres || []).join(", ")],
+    ["Director", m.director],
+    ["Duración", fmtRuntime(m.runtime)],
+  ].filter(r => r[1]).map(r => `<div><b>${r[0]}:</b> ${esc(r[1])}</div>`).join("");
+
+  // Sugerencias de cine: las de por defecto + las ya usadas
+  const cinemas = [...new Set([...DEFAULT_CINEMAS, ...movies.map(x => x.cinema).filter(Boolean)])];
+  const langOpts = ["", ...LANGS, ...(m.lang && !LANGS.includes(m.lang) ? [m.lang] : [])]
+    .map(l => `<option value="${esc(l)}" ${l === (m.lang || "") ? "selected" : ""}>${l || "—"}</option>`).join("");
+
   $("detailSheet").innerHTML = `
     <div class="row">
       ${m.poster ? `<img src="${IMG}w185${m.poster}" alt="">` : ""}
       <div><h2>${esc(m.title)}</h2><div class="y" style="color:var(--muted)">${esc(m.year || "")}</div>
-      <span class="avg ${a == null ? "none" : ""}">Media ★ ${fmt(a)}</span></div>
+      <span class="avg ${a == null ? "none" : ""}">Media ★ ${fmt(a)}</span>
+      <div class="meta">${metaRows || "Cargando ficha…"}</div></div>
     </div>
     <div class="overview">${esc(m.overview || "")}</div>
+
+    <div class="block"><h3>🎟️ Cuándo y dónde la vimos</h3>
+      <div class="two">
+        <div><label>Fecha</label><input type="date" id="vDate" value="${esc(m.watchedOn || "")}"></div>
+        <div><label>Idioma</label><select id="vLang">${langOpts}</select></div>
+      </div>
+      <label>Cine</label>
+      <input id="vCinema" list="cinemaList" placeholder="Elige uno o escribe otro…" value="${esc(m.cinema || "")}" autocomplete="off">
+      <datalist id="cinemaList">${cinemas.map(c => `<option value="${esc(c)}">`).join("")}</datalist>
+      <div class="actions"><button class="btn" id="saveVisit">Guardar visita</button></div>
+    </div>
+
     <div class="block mine"><h3>Tu nota (${esc(nameOf(me))})</h3>
       <div class="rate"><input type="range" id="myRating" min="0" max="10" step="0.5" value="${myRating}">
       <span class="val" id="myVal">${fmt(m.ratings?.[me])}</span></div>
@@ -214,16 +301,24 @@ function renderDetail(id) {
     </div>
     ${others}
     <div class="actions"><button class="btn danger" id="delBtn">Eliminar</button><button class="btn ghost" id="closeDetail">Cerrar</button></div>`;
+
   const r = $("myRating"), v = $("myVal");
   r.oninput = () => { v.textContent = fmt(parseFloat(r.value)); };
   $("closeDetail").onclick = closeDetail;
+  $("saveVisit").onclick = async () => {
+    await updateDoc(doc(moviesCol, id), {
+      watchedOn: $("vDate").value || null,
+      cinema: $("vCinema").value.trim() || null,
+      lang: $("vLang").value || null,
+    });
+    toast("Visita guardada");
+  };
   $("saveMine").onclick = async () => {
     await updateDoc(doc(moviesCol, id), {
       [`ratings.${me}`]: parseFloat(r.value),
       [`comments.${me}`]: $("myComment").value.trim(),
     });
-    $("saveMine").textContent = "¡Guardado!";
-    setTimeout(() => { const b = $("saveMine"); if (b) b.textContent = "Guardar mi nota"; }, 1200);
+    toast("Nota guardada");
   };
   $("delBtn").onclick = async () => {
     if (confirm(`¿Eliminar “${m.title}” para los dos?`)) { await deleteDoc(doc(moviesCol, id)); closeDetail(); }
@@ -259,9 +354,13 @@ $("results").onclick = async (e) => {
   const x = ($("results")._res || []).find(r => String(r.id) === el.dataset.id); if (!x) return;
   const id = String(x.id);
   if (movies.some(m => m.id === id)) { alert("Esa película ya está en la lista."); return; }
+  let info = {};
+  try { info = await fetchDetails(id); } catch (err) { console.warn(err); } // si falla, se completa luego solo
   await setDoc(doc(moviesCol, id), {
     title: x.title, year: (x.release_date || "").slice(0, 4), poster: x.poster_path || null,
     overview: x.overview || "", addedBy: me, ratings: {}, comments: {}, createdAt: serverTimestamp(),
+    watchedOn: todayStr(), cinema: null, lang: null,
+    ...info,
   });
   $("addModal").classList.add("hidden");
   $("searchInput").value = ""; $("results").innerHTML = "";
