@@ -106,6 +106,12 @@
   .res .rb{display:flex;flex-direction:column;gap:6px;margin-left:auto;flex:none;justify-content:center}
   .res .rb .btn{padding:6px 10px;font-size:12px;white-space:nowrap}
   .res .grow{flex:1;min-width:0}
+  .wl{display:flex;gap:10px;align-items:center;padding:8px;border-radius:10px;cursor:pointer}
+  .wl:hover{background:var(--card2)}
+  .wl img,.wl .np{width:40px;height:60px;object-fit:cover;border-radius:6px;background:var(--card2);flex:none}
+  .wl .grow{flex:1;min-width:0}
+  .wl .tt{font-weight:600}
+  .wl .btn{padding:6px 10px;font-size:12px;flex:none}
   .tmdb{margin:26px 0 8px;padding:14px;text-align:center;color:var(--muted);font-size:12px;line-height:1.5}
   .tmdb img{height:14px;display:block;margin:0 auto 8px}
   .tmdb a{color:var(--muted)}
@@ -201,6 +207,7 @@
     <button class="btn" id="addBtn">+ Añadir</button>
     <button class="btn ghost" id="menuBtn" aria-label="Menú">☰</button>
     <div id="menu" class="menu hidden">
+      <button id="wlBtn">📋 Pelis por ver (lista)</button>
       <button id="upBtn">🎟️ Próximos estrenos</button>
       <button id="gamesBtn">🎮 Juegos: duelo, adivina, quiz</button>
       <button id="wrapBtn">🎁 Resumen del año</button>
@@ -259,6 +266,24 @@
     <input id="searchInput" placeholder="Busca por título…" style="margin-top:10px">
     <div id="results" style="margin-top:10px"></div>
     <div class="actions"><button class="btn ghost" id="closeAdd">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Modal: lista de pelis por ver -->
+<div id="wlModal" class="overlay hidden">
+  <div class="sheet wide">
+    <h2>📋 Pelis por ver <small id="wlCount" class="sub"></small></h2>
+    <div class="two" style="margin-top:8px">
+      <div style="flex:2"><input id="wlFilter" placeholder="Buscar…" autocomplete="off"></div>
+      <div><select id="wlSort">
+        <option value="interest">Más interés</option>
+        <option value="release">Fecha de estreno</option>
+        <option value="recent">Añadidas recientemente</option>
+        <option value="title">Título A-Z</option>
+      </select></div>
+    </div>
+    <div id="wlList" style="margin-top:8px"></div>
+    <div class="actions"><button class="btn ghost" id="wlAdd">+ Añadir</button><button class="btn ghost" id="wlClose">Cerrar</button></div>
   </div>
 </div>
 
@@ -447,6 +472,7 @@ function enter(code, who) {
     render();
     if (openId) renderDetail(openId);
     if (!$("upModal").classList.contains("hidden")) renderUpcoming();
+    if (!$("wlModal").classList.contains("hidden")) renderWishList();
     backfill();
   }, err => { console.error(err); alert("No se pudo conectar con Firebase. Revisa config.js y las reglas."); });
   // si el otro cambia los nombres o los cines, se ve al momento
@@ -491,12 +517,25 @@ $("grpSave").onclick = async () => {
 })();
 
 // ---------- TMDB: ficha de la película ----------
+// Estreno en España: prioriza estreno en cines (3), luego limitado (2), luego el resto
+function spainRelease(d) {
+  const es = (d.release_dates?.results || []).find(x => x.iso_3166_1 === "ES");
+  const L = (es?.release_dates || []).filter(x => x.release_date);
+  for (const types of [[3], [2], [1, 4, 5, 6]]) {
+    const c = L.filter(x => types.includes(x.type)).map(x => x.release_date.slice(0, 10)).sort();
+    if (c.length) return c[0];
+  }
+  return "";
+}
+// Fecha de estreno que manda: la de España; si no hay, la original
+const esDate = (m) => m.releaseES || m.releaseDate || "";
 async function fetchDetails(id) {
-  const r = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&language=es-ES&append_to_response=credits`);
+  const r = await fetch(`https://api.themoviedb.org/3/movie/${id}?api_key=${TMDB_API_KEY}&language=es-ES&append_to_response=credits,release_dates`);
   if (!r.ok) throw new Error("TMDB " + r.status);
   const d = await r.json();
   return {
     releaseDate: d.release_date || "",
+    releaseES: spainRelease(d),
     genres: (d.genres || []).map(g => g.name),
     director: (d.credits?.crew || []).filter(c => c.job === "Director").map(c => c.name).join(", "),
     runtime: d.runtime || null,
@@ -508,12 +547,12 @@ const backfilled = new Set();
 async function backfill() {
   if (TMDB_API_KEY === "PEGA_AQUI") return;
   for (const m of movies) {
-    if ((m.releaseDate !== undefined && m.collection !== undefined) || backfilled.has(m.id)) continue;
+    if ((m.releaseDate !== undefined && m.collection !== undefined && m.releaseES !== undefined) || backfilled.has(m.id)) continue;
     backfilled.add(m.id);
     try {
       const d = await fetchDetails(m.id);
-      // si ya tenía ficha, solo se añade la saga (sin tocar la fecha de estreno guardada)
-      await updateDoc(doc(moviesCol, m.id), m.releaseDate !== undefined ? { collection: d.collection } : d);
+      // si ya tenía ficha, solo se añaden la saga y el estreno en España (sin tocar la fecha original guardada)
+      await updateDoc(doc(moviesCol, m.id), m.releaseDate !== undefined ? { collection: d.collection, releaseES: d.releaseES } : d);
     }
     catch (e) { console.warn("No se pudo completar", m.title, e); }
   }
@@ -529,7 +568,7 @@ const mean = (a) => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
 
 let yearFilter = String(new Date().getFullYear()); // por defecto: el año actual
 // Fecha que sitúa una película en el calendario: cuándo la vimos, o (si está pendiente) su estreno
-const dateOf = (m) => m.watchedOn || (m.wish ? m.releaseDate : "") || (m.watchedYear ? m.watchedYear + "-01-01" : "");
+const dateOf = (m) => m.watchedOn || (m.wish ? esDate(m) : "") || (m.watchedYear ? m.watchedYear + "-01-01" : "");
 const yearOf = (m) => dateOf(m).slice(0, 4) || null;
 
 function syncYearSelect() {
@@ -577,8 +616,8 @@ function render() {
     const a = avgOf(m);
     const mini = m.wish ? "" : PEOPLE.map(p => `${esc(p.name)}: ${fmt(m.ratings?.[p.id])}`).join(" · ");
     const pills = (m.wish
-        ? [m.releaseDate ? "🎯 Estreno " + fmtDate(m.releaseDate) : "🎯 Pendiente", isum(m) ? "🔥 " + isum(m) + "/" + 3 * PEOPLE.length : ""]
-        : [m.watchedOn ? "📅 " + fmtDate(m.watchedOn) : m.watchedYear ? "📅 " + m.watchedYear : "", m.lang ? "🗣️ " + m.lang : "", m.cinema ? "📍 " + m.cinema : "", m.platform ? "📺 " + m.platform : ""])
+        ? [esDate(m) ? "🎯 Estreno " + fmtDate(esDate(m)) : "🎯 Pendiente", isum(m) ? "🔥 " + isum(m) + "/" + 3 * PEOPLE.length : ""]
+        : [m.watchedOn ? "📅 " + fmtDate(m.watchedOn) : m.watchedYear ? "📅 " + m.watchedYear : "", esDate(m) ? "🎬 Estreno " + fmtDate(esDate(m)) : "", m.lang ? "🗣️ " + m.lang : "", m.cinema ? "📍 " + m.cinema : "", m.platform ? "📺 " + m.platform : ""])
       .filter(Boolean).map(t => `<span class="pill" title="${esc(t)}">${esc(t)}</span>`).join("");
     const badge = m.wish ? `<span class="avg none">Por ver</span>` : `<span class="avg ${a == null ? "none" : ""}">★ ${fmt(a)}</span>`;
     return `<div class="card ${m.wish ? "wish" : ""}" data-id="${m.id}">
@@ -682,7 +721,8 @@ function renderDetail(id) {
     <div class="overview" style="margin:0">${esc(m.comments?.[p.id] || "Sin comentario")}</div></div>`).join("");
 
   const metaRows = [
-    ["Estreno", fmtDate(m.releaseDate)],
+    ["Estreno en España", fmtDate(esDate(m))],
+    ["Estreno original", m.releaseES && m.releaseDate && m.releaseES !== m.releaseDate ? fmtDate(m.releaseDate) : ""],
     ["Género", (m.genres || []).join(", ")],
     ["Director", m.director],
     ["Duración", fmtRuntime(m.runtime)],
@@ -756,7 +796,7 @@ function renderDetail(id) {
 }
 
 function renderWishDetail(m) {
-  const metaRows = [["Estreno", fmtDate(m.releaseDate)], ["Género", (m.genres || []).join(", ")], ["Director", m.director], ["Duración", fmtRuntime(m.runtime)]]
+  const metaRows = [["Estreno en España", fmtDate(esDate(m))], ["Estreno original", m.releaseES && m.releaseDate && m.releaseES !== m.releaseDate ? fmtDate(m.releaseDate) : ""], ["Género", (m.genres || []).join(", ")], ["Director", m.director], ["Duración", fmtRuntime(m.runtime)]]
     .filter(r => r[1]).map(r => `<div><b>${r[0]}:</b> ${esc(r[1])}</div>`).join("");
   $("detailSheet").innerHTML = `
     <div class="row">
@@ -1015,7 +1055,7 @@ $("upList").onclick = async (e) => {
   if (ex) return;
   const x = up.items.find(i => String(i.id) === id); if (!x) return;
   b.disabled = true; b.textContent = "…";
-  await addWish(x);
+  await addWish(x, x.release_date); // el listado ya viene filtrado por región España
 };
 
 // ======================================================================
@@ -1069,13 +1109,13 @@ $("backupBtn").onclick = () => {
   toast("Copia descargada");
 };
 $("csvBtn").onclick = () => {
-  const head = ["Película", "Año", "Estado", "Fecha vista", "Cine", "Plataforma", "Idioma", "Precio", ...PEOPLE.map(p => "Nota " + p.name), "Media", "Género", "Director", "Duración (min)", "Estreno"];
+  const head = ["Película", "Año", "Estado", "Fecha vista", "Cine", "Plataforma", "Idioma", "Precio", ...PEOPLE.map(p => "Nota " + p.name), "Media", "Género", "Director", "Duración (min)", "Estreno España", "Estreno original"];
   const cell = (v) => { const s = v == null ? "" : String(v); return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
   const n = (v) => v == null ? "" : String(v).replace(".", ",");
   const rows = [...movies].sort((a, b) => dateOf(b).localeCompare(dateOf(a))).map(m => [
     m.title, m.year, m.wish ? "Por ver" : "Vista", m.watchedOn ? fmtDate(m.watchedOn) : (m.watchedYear || ""), m.cinema, m.platform, m.lang, n(m.price),
     ...PEOPLE.map(p => n(m.ratings?.[p.id])), n(avgOf(m) == null ? null : Math.round(avgOf(m) * 10) / 10),
-    (m.genres || []).join(", "), m.director, m.runtime, m.releaseDate ? fmtDate(m.releaseDate) : "",
+    (m.genres || []).join(", "), m.director, m.runtime, esDate(m) ? fmtDate(esDate(m)) : "", m.releaseDate ? fmtDate(m.releaseDate) : "",
   ].map(cell).join(";"));
   download(`peliculas-${todayStr()}.csv`, "﻿" + [head.map(cell).join(";"), ...rows].join("\r\n"), "text/csv;charset=utf-8");
 };
@@ -1102,7 +1142,7 @@ $("installBtn").onclick = async () => {
 if ("serviceWorker" in navigator) navigator.serviceWorker.register("./sw.js").catch(() => {});
 
 // ---------- Pendientes: añadir, interés, aviso y calendario ----------
-async function addWish(x) {
+async function addWish(x, esHint) {
   const id = String(x.id);
   if (!Object.keys(GENRES).length) await loadGenres();
   let info = {};
@@ -1113,7 +1153,8 @@ async function addWish(x) {
     watchedOn: null, cinema: null, lang: null, wish: true,
     genres: (x.genre_ids || []).map(g => GENRES[g]).filter(Boolean),
     ...info,
-    releaseDate: x.release_date || info.releaseDate || "",
+    releaseDate: info.releaseDate || x.release_date || "",
+    releaseES: info.releaseES || esHint || "",
   });
 }
 function interestBlock(m) {
@@ -1127,24 +1168,24 @@ function interestBlock(m) {
 function renderSoon() {
   const t0 = todayStr(), lim = new Date(); lim.setDate(lim.getDate() + 14);
   const t1 = lim.toLocaleDateString("sv");
-  const soon = movies.filter(m => m.wish && m.releaseDate && m.releaseDate >= t0 && m.releaseDate <= t1)
-    .sort((a, b) => a.releaseDate.localeCompare(b.releaseDate)).slice(0, 3);
+  const soon = movies.filter(m => m.wish && esDate(m) && esDate(m) >= t0 && esDate(m) <= t1)
+    .sort((a, b) => esDate(a).localeCompare(esDate(b))).slice(0, 3);
   const el = $("soon");
   el.classList.toggle("hidden", !soon.length);
   el.innerHTML = soon.map(m => {
-    const d = daysBetween(t0, m.releaseDate);
-    return `🔔 <b>${esc(m.title)}</b> se estrena ${d === 0 ? "hoy" : d === 1 ? "mañana" : "en " + d + " días"} <span class="sub">(${fmtDate(m.releaseDate)})</span>`;
+    const d = daysBetween(t0, esDate(m));
+    return `🔔 <b>${esc(m.title)}</b> se estrena ${d === 0 ? "hoy" : d === 1 ? "mañana" : "en " + d + " días"} <span class="sub">(${fmtDate(esDate(m))})</span>`;
   }).join("<br>");
 }
 const icsEsc = (s) => String(s).replace(/([,;\\])/g, "\\$1").replace(/\n/g, "\\n");
 const ymd = (s) => s.replace(/-/g, "");
 function nextDay(s) { const d = new Date(s + "T12:00:00Z"); d.setUTCDate(d.getUTCDate() + 1); return d.toISOString().slice(0, 10); }
 $("icsBtn").onclick = () => {
-  const list = movies.filter(m => m.wish && m.releaseDate && m.releaseDate >= todayStr());
+  const list = movies.filter(m => m.wish && esDate(m) && esDate(m) >= todayStr());
   if (!list.length) { toast("No hay pendientes con estreno futuro"); return; }
   const stamp = new Date().toISOString().replace(/[-:]/g, "").slice(0, 15) + "Z";
   const ev = list.map(m => ["BEGIN:VEVENT", `UID:peli-${m.id}@peliculas`, `DTSTAMP:${stamp}`,
-    `DTSTART;VALUE=DATE:${ymd(m.releaseDate)}`, `DTEND;VALUE=DATE:${ymd(nextDay(m.releaseDate))}`,
+    `DTSTART;VALUE=DATE:${ymd(esDate(m))}`, `DTEND;VALUE=DATE:${ymd(nextDay(esDate(m)))}`,
     `SUMMARY:${icsEsc("🎬 Estreno: " + m.title)}`, `DESCRIPTION:${icsEsc("Pendiente de ver (fecha según TMDB)")}`,
     "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsEsc("Mañana se estrena " + m.title)}`, "TRIGGER:-PT15H", "END:VALARM",
     "BEGIN:VALARM", "ACTION:DISPLAY", `DESCRIPTION:${icsEsc("Hoy se estrena " + m.title)}`, "TRIGGER:PT9H", "END:VALARM",
@@ -1157,7 +1198,7 @@ $("icsBtn").onclick = () => {
 const provCache = {};
 async function fillProviders(m) {
   const el = $("prov"); if (!el) return;
-  if (m.wish && m.releaseDate && m.releaseDate > todayStr()) { el.textContent = `📺 Aún no disponible: estreno en cines el ${fmtDate(m.releaseDate)}.`; return; }
+  if (m.wish && esDate(m) && esDate(m) > todayStr()) { el.textContent = `📺 Aún no disponible: estreno en cines el ${fmtDate(esDate(m))}.`; return; }
   if (TMDB_API_KEY === "PEGA_AQUI") { el.textContent = ""; return; }
   try {
     if (!provCache[m.id]) {
@@ -1374,7 +1415,7 @@ function buildWrap(Y) {
     const mo = countBy(SD, m => m.watchedOn.slice(0, 7)), st = monthStreak(SD);
     sl.push({ bg: G(), html: `<p>📅 Mes más cinéfilo</p><div class="big sm2">${monthName(mo[0][0])}</div><h3>${mo[0][1]} ${plural(mo[0][1], "película", "películas")}</h3>${st.len > 1 ? `<p class="sm">Racha: ${st.len} meses seguidos yendo al cine</p>` : ""}` });
   }
-  const next = movies.filter(m => m.wish && (m.releaseDate || "").startsWith(String(+Y + 1))).length;
+  const next = movies.filter(m => m.wish && esDate(m).startsWith(String(+Y + 1))).length;
   sl.push({ bg: G(), html: `<div class="big">🎞️</div><h3>¡Hasta el próximo ${+Y + 1}!</h3>${next ? `<p>Os esperan ${next} ${plural(next, "estreno pendiente", "estrenos pendientes")}</p>` : ""}` });
   return sl;
 }
@@ -1443,7 +1484,7 @@ function renderRecords() {
   }
   const tens = S.filter(m => PEOPLE.every(p => m.ratings?.[p.id] === 10));
   if (tens.length) out.push(card("💯", "Dieces de los dos", `${tens.length}`, tens.slice(0, 4).map(m => esc(m.title)).join(", ")));
-  const delays = S.filter(m => m.releaseDate).map(m => ({ m, d: daysBetween(m.releaseDate, m.watchedOn) })).filter(x => x.d >= 0 && x.d <= 1500);
+  const delays = S.filter(m => esDate(m)).map(m => ({ m, d: daysBetween(esDate(m), m.watchedOn) })).filter(x => x.d >= 0 && x.d <= 1500);
   if (delays.length) {
     const fast = delays.reduce((a, b) => a.d < b.d ? a : b);
     out.push(card("🏃", "Tardáis de media en verla", `${Math.round(mean(delays.map(x => x.d)))} días`, `desde su estreno · la más rápida: ${esc(fast.m.title)} (${fast.d} d)`));
@@ -1520,6 +1561,42 @@ $("recBody").onclick = async (e) => {
   b.disabled = true; b.textContent = "…";
   await addWish(p);
   if (recTab === "sagas") renderSagas();
+};
+
+// ---------- Lista de pelis por ver ----------
+function renderWishList() {
+  const q = $("wlFilter").value.trim().toLowerCase(), sort = $("wlSort").value, t0 = todayStr();
+  const all = movies.filter(m => m.wish);
+  const list = all.filter(m => !q || [m.title, m.director, (m.genres || []).join(" ")].join(" ").toLowerCase().includes(q));
+  const ts = (m) => m.createdAt?.seconds ?? 0;
+  list.sort((a, b) => {
+    if (sort === "title") return (a.title || "").localeCompare(b.title || "", "es");
+    if (sort === "recent") return ts(b) - ts(a);
+    if (sort === "release") return (esDate(a) || "9999").localeCompare(esDate(b) || "9999");
+    return (isum(b) - isum(a)) || (esDate(b) || "").localeCompare(esDate(a) || "");
+  });
+  $("wlCount").textContent = `(${all.length})`;
+  $("wlList").innerHTML = list.map(m => {
+    const d = esDate(m);
+    const est = !d ? "Sin fecha" : d > t0 ? "🗓️ Estreno " + fmtDate(d) : "🎬 Estrenada " + fmtDate(d);
+    const sub = [est, (m.genres || []).slice(0, 2).join(", "), fmtRuntime(m.runtime), isum(m) ? "🔥 " + isum(m) + "/" + 3 * PEOPLE.length : ""].filter(Boolean).join(" · ");
+    return `<div class="wl" data-id="${m.id}">
+      ${m.poster ? `<img loading="lazy" src="${IMG}w92${m.poster}" alt="">` : `<div class="np"></div>`}
+      <div class="grow"><div class="tt">${esc(m.title)} <span class="sub">${esc(m.year || "")}</span></div><div class="sub">${esc(sub)}</div></div>
+      <button class="btn" data-seen="${m.id}">✅ La vimos</button></div>`;
+  }).join("") || `<div class="sub" style="padding:14px 0">${all.length ? "Nada con ese filtro." : "No hay películas por ver. Añádelas con “+ Añadir” → “🎯 Por ver” o desde Próximos estrenos."}</div>`;
+}
+$("wlBtn").onclick = () => { $("wlModal").classList.remove("hidden"); renderWishList(); };
+$("wlClose").onclick = () => $("wlModal").classList.add("hidden");
+$("wlModal").onclick = (e) => { if (e.target === $("wlModal")) $("wlModal").classList.add("hidden"); };
+$("wlFilter").oninput = renderWishList;
+$("wlSort").onchange = renderWishList;
+$("wlAdd").onclick = () => { $("wlModal").classList.add("hidden"); $("addBtn").click(); };
+$("wlList").onclick = async (e) => {
+  const sb = e.target.closest("[data-seen]");
+  if (sb) { sb.disabled = true; await updateDoc(doc(moviesCol, sb.dataset.seen), { wish: false, watchedOn: todayStr() }); toast("¡Apuntada como vista!"); return; }
+  const row = e.target.closest(".wl"); if (!row) return;
+  $("wlModal").classList.add("hidden"); openDetail(row.dataset.id);
 };
 </script>
 </body>
