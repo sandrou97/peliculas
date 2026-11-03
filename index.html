@@ -103,6 +103,12 @@
   .res:hover{background:var(--card2)}
   .res img,.res .np{width:44px;height:66px;object-fit:cover;border-radius:6px;background:var(--card2);flex:none}
   .res .sub{color:var(--muted);font-size:12px}
+  .res .rb{display:flex;flex-direction:column;gap:6px;margin-left:auto;flex:none;justify-content:center}
+  .res .rb .btn{padding:6px 10px;font-size:12px;white-space:nowrap}
+  .res .grow{flex:1;min-width:0}
+  .tmdb{margin:26px 0 8px;padding:14px;text-align:center;color:var(--muted);font-size:12px;line-height:1.5}
+  .tmdb img{height:14px;display:block;margin:0 auto 8px}
+  .tmdb a{color:var(--muted)}
   .gate{max-width:380px;margin:12vh auto;padding:20px}
   .gate h1{margin-top:0}
   .gate label{display:block;margin:14px 0 6px;color:var(--muted);font-size:14px}
@@ -239,6 +245,11 @@
       </section>
     </div>
   </main>
+  <footer class="tmdb">
+    <a href="https://www.themoviedb.org" target="_blank" rel="noopener"><img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB" onerror="this.outerHTML='<b>TMDB</b><br>'"></a>
+    Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB.<br>
+    Datos de “dónde verla” cortesía de JustWatch.
+  </footer>
 </div>
 
 <!-- Modal: añadir -->
@@ -785,11 +796,17 @@ async function search() {
     const r = await fetch(`https://api.themoviedb.org/3/search/movie?api_key=${TMDB_API_KEY}&language=es-ES&include_adult=false&query=${encodeURIComponent(q)}`);
     const data = await r.json();
     const res = (data.results || []).slice(0, 8);
-    box.innerHTML = res.length ? res.map(x => `
-      <div class="res" data-id="${x.id}">
+    const st = (x) => { const m = movies.find(v => v.id === String(x.id)); return m ? (m.wish ? "wish" : "seen") : "none"; };
+    box.innerHTML = res.length ? res.map(x => {
+      const s = st(x);
+      const btns = s === "seen" ? `<span class="sub">✅ Ya vista</span>`
+        : s === "wish" ? `<span class="sub">🎯 Ya en pendientes</span>`
+        : `<button class="btn" data-act="seen">✅ La vimos</button><button class="btn ghost" data-act="wish">🎯 Por ver</button>`;
+      return `<div class="res" data-id="${x.id}">
         ${x.poster_path ? `<img src="${IMG}w92${x.poster_path}" alt="">` : `<div class="np"></div>`}
-        <div><div>${esc(x.title)}</div><div class="sub">${esc((x.release_date || "").slice(0, 4))} · ${esc(x.original_title)}</div></div>
-      </div>`).join("") : `<div class="sub" style="color:var(--muted)">Sin resultados</div>`;
+        <div class="grow"><div>${esc(x.title)}</div><div class="sub">${esc((x.release_date || "").slice(0, 4))} · ${esc(x.original_title)}</div></div>
+        <div class="rb">${btns}</div>
+      </div>`; }).join("") : `<div class="sub" style="color:var(--muted)">Sin resultados</div>`;
     box._res = res;
   } catch { box.innerHTML = `<div class="err">Error al buscar. ¿Clave de TMDB correcta?</div>`; }
 }
@@ -797,10 +814,18 @@ $("results").onclick = async (e) => {
   const el = e.target.closest(".res"); if (!el) return;
   const x = ($("results")._res || []).find(r => String(r.id) === el.dataset.id); if (!x) return;
   const id = String(x.id);
+  const act = e.target.closest("[data-act]")?.dataset.act || "seen";
   const ex = movies.find(m => m.id === id);
   if (ex) {
     if (ex.wish) { $("addModal").classList.add("hidden"); openDetail(id); return; }
     alert("Esa película ya está en la lista."); return;
+  }
+  const done = () => { $("addModal").classList.add("hidden"); $("searchInput").value = ""; $("results").innerHTML = ""; };
+  if (act === "wish") {
+    e.target.closest("[data-act]").disabled = true;
+    await addWish(x);
+    done(); toast("🎯 Añadida a pendientes");
+    return;
   }
   let info = {};
   try { info = await fetchDetails(id); } catch (err) { console.warn(err); } // si falla, se completa luego solo
@@ -810,8 +835,7 @@ $("results").onclick = async (e) => {
     watchedOn: todayStr(), cinema: null, lang: null,
     ...info,
   });
-  $("addModal").classList.add("hidden");
-  $("searchInput").value = ""; $("results").innerHTML = "";
+  done();
   openDetail(id);
 };
 
