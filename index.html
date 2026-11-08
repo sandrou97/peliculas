@@ -715,9 +715,9 @@ function renderStats(all) {
 }
 
 // ---------- Detalle ----------
-let openId = null;
-function openDetail(id) { openId = id; renderDetail(id); $("detailModal").classList.remove("hidden"); }
-function closeDetail() { openId = null; $("detailModal").classList.add("hidden"); }
+let openId = null, editPid = null; // editPid: de quién es la nota que se está editando (null = la mía)
+function openDetail(id) { openId = id; editPid = null; renderDetail(id); $("detailModal").classList.remove("hidden"); }
+function closeDetail() { openId = null; editPid = null; $("detailModal").classList.add("hidden"); }
 $("detailModal").onclick = (e) => { if (e.target === $("detailModal")) closeDetail(); };
 
 function renderDetail(id) {
@@ -729,10 +729,17 @@ function renderDetail(id) {
 
   if (m.wish) { renderWishDetail(m); return; }
   const a = avgOf(m);
-  const myRating = m.ratings?.[me] ?? 5;
-  const others = PEOPLE.filter(p => p.id !== me).map(p => `
-    <div class="block"><h3>${esc(p.name)}: ${mhOf(m, p.id) ? "🏅 Matrícula de honor" : "★ " + fmt(m.ratings?.[p.id])}</h3>
-    <div class="overview" style="margin:0">${esc(m.comments?.[p.id] || "Sin comentario")}</div></div>`).join("");
+  // Se puede editar tu nota o, con confirmación, la de otra persona (p. ej. si no va a entrar a la app)
+  const target = PEOPLE.some(p => p.id === editPid) ? editPid : me;
+  const tName = nameOf(target), forOther = target !== me;
+  const myRating = m.ratings?.[target] ?? 5;
+  const others = PEOPLE.filter(p => p.id !== target).map(p => {
+    const by = m.ratedBy?.[p.id];
+    const note = by && by !== p.id ? ` <small class="sub">· nota puesta por ${esc(nameOf(by))}</small>` : "";
+    return `<div class="block"><h3>${esc(p.name)}${p.id === me ? " (tú)" : ""}: ${mhOf(m, p.id) ? "🏅 Matrícula de honor" : "★ " + fmt(m.ratings?.[p.id])}${note}</h3>
+    <div class="overview" style="margin:0">${esc(m.comments?.[p.id] || "Sin comentario")}</div>
+    <div class="actions"><button class="btn ghost" data-edit="${p.id}">✏️ ${p.id === me ? "Editar mi nota" : (typeof m.ratings?.[p.id] === "number" ? "Modificar" : "Poner") + " la nota de " + esc(p.name)}</button></div></div>`;
+  }).join("");
 
   const metaRows = [
     ["Estreno en España", fmtDate(esDate(m))],
@@ -774,21 +781,22 @@ function renderDetail(id) {
       <div class="actions"><button class="btn" id="saveVisit">Guardar visita</button></div>
     </div>
 
-    <div class="block mine"><h3>Tu nota (${esc(nameOf(me))})</h3>
+    <div class="block mine"><h3>${forOther ? `Nota de ${esc(tName)} <small class="sub">· la pones tú</small>` : `Tu nota (${esc(tName)})`}</h3>
+      ${forOther ? `<div class="banner" style="margin:0 0 10px">✋ Estás poniendo la nota de ${esc(tName)} en su nombre. Se te pedirá confirmación al guardar.</div>` : ""}
       <div class="rate"><button class="nudge" id="rMinus" type="button" aria-label="Bajar 0,1">−</button>
       <input type="range" id="myRating" min="0" max="10" step="0.1" value="${myRating}">
       <button class="nudge" id="rPlus" type="button" aria-label="Subir 0,1">+</button>
-      <span class="val" id="myVal">${fmt(m.ratings?.[me])}</span></div>
-      <button class="mhbtn ${mhOf(m, me) ? "on" : ""}" id="mhBtn" type="button">🏅 MATRÍCULA DE HONOR (MH)</button>
-      <textarea id="myComment" rows="3" placeholder="Tu comentario…" style="margin-top:10px">${esc(m.comments?.[me] || "")}</textarea>
-      <div class="actions"><button class="btn" id="saveMine">Guardar mi nota</button></div>
+      <span class="val" id="myVal">${fmt(m.ratings?.[target])}</span></div>
+      <button class="mhbtn ${mhOf(m, target) ? "on" : ""}" id="mhBtn" type="button">🏅 MATRÍCULA DE HONOR (MH)</button>
+      <textarea id="myComment" rows="3" placeholder="${forOther ? "Comentario de " + esc(tName) + " (opcional)…" : "Tu comentario…"}" style="margin-top:10px">${esc(m.comments?.[target] || "")}</textarea>
+      <div class="actions"><button class="btn" id="saveMine">${forOther ? "Guardar la nota de " + esc(tName) : "Guardar mi nota"}</button>${forOther ? `<button class="btn ghost" id="cancelOther">Cancelar</button>` : ""}</div>
     </div>
     ${others}
     <div class="sub" id="prov" style="margin-top:12px">📺 Buscando dónde verla…</div>
     <div class="actions"><button class="btn danger" id="delBtn">Eliminar</button><button class="btn ghost" id="closeDetail">Cerrar</button></div>`;
 
   const r = $("myRating"), v = $("myVal");
-  let mhOn = mhOf(m, me);
+  let mhOn = mhOf(m, target);
   const paintRate = () => {
     r.disabled = mhOn; $("rMinus").disabled = mhOn; $("rPlus").disabled = mhOn;
     $("mhBtn").classList.toggle("on", mhOn);
@@ -811,13 +819,23 @@ function renderDetail(id) {
     });
     toast("Visita guardada");
   };
+  document.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { editPid = b.dataset.edit === me ? null : b.dataset.edit; renderDetail(id); $("detailSheet").querySelector(".block.mine")?.scrollIntoView({ block: "center" }); });
+  if ($("cancelOther")) $("cancelOther").onclick = () => { editPid = null; renderDetail(id); };
   $("saveMine").onclick = async () => {
+    const val = mhOn ? 10 : Math.round(parseFloat(r.value) * 10) / 10;
+    if (forOther) {
+      const had = typeof m.ratings?.[target] === "number";
+      const txt = mhOn ? "una matrícula de honor 🏅" : "un " + fmt(val);
+      if (!confirm(`¿Seguro que quieres ${had ? "modificar" : "añadir"} la nota de ${tName}?\n\n“${m.title}”: ${had ? "pasará de " + (mhOf(m, target) ? "MH" : fmt(m.ratings[target])) + " a " : "se pondrá "}${txt}, a nombre de ${tName}.`)) return;
+    }
     await updateDoc(doc(moviesCol, id), {
-      [`ratings.${me}`]: mhOn ? 10 : Math.round(parseFloat(r.value) * 10) / 10,
-      [`mh.${me}`]: mhOn,
-      [`comments.${me}`]: $("myComment").value.trim(),
+      [`ratings.${target}`]: val,
+      [`mh.${target}`]: mhOn,
+      [`comments.${target}`]: $("myComment").value.trim(),
+      [`ratedBy.${target}`]: me,
     });
-    toast("Nota guardada");
+    toast(forOther ? `Nota de ${tName} guardada` : "Nota guardada");
+    if (forOther) { editPid = null; renderDetail(id); }
   };
   $("delBtn").onclick = async () => {
     if (confirm(`¿Eliminar “${m.title}” para los dos?`)) { await deleteDoc(doc(moviesCol, id)); closeDetail(); }
