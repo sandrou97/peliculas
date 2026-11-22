@@ -1,10 +1,15 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Los datos viven en rooms/{codigo}/movies/{pelicula}.
+    // Cada código es un grupo independiente:
+    //   rooms/{codigo}/movies/{pelicula}  -> las películas
+    //   rooms/{codigo}/meta/config        -> nombres de las dos personas y cines sugeridos
     // No hay regla para listar "rooms", así que nadie puede descubrir
     // códigos ajenos: hay que conocer el código para acceder.
     match /rooms/{room}/movies/{movie} {
+      allow read, write: if room.size() >= 6 && room.size() <= 40;
+    }
+    match /rooms/{room}/meta/{doc} {
       allow read, write: if room.size() >= 6 && room.size() <= 40;
     }
   }

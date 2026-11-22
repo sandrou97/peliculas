@@ -120,6 +120,16 @@
   .wl .grow{flex:1;min-width:0}
   .wl .tt{font-weight:600}
   .wl .btn{padding:6px 10px;font-size:12px;flex:none}
+  .sectabs{display:flex;gap:6px;padding:10px 16px 0;overflow-x:auto;max-width:1240px;margin:0 auto}
+  .sectabs button{flex:none;padding:8px 14px;border-radius:999px;border:1px solid var(--line);background:var(--card);color:var(--text);font-weight:700;cursor:pointer}
+  .sectabs button.on{background:var(--accent);color:#111;border-color:var(--accent)}
+  .noposter.ek{flex-direction:column;gap:6px;font-size:34px;color:#fff;background:linear-gradient(135deg,var(--k1),var(--k2))}
+  .noposter.ek small{font-size:13px;font-weight:700;line-height:1.2}
+  .ek-series{--k1:#6d5dfc;--k2:#3b82f6}.ek-game{--k1:#10b981;--k2:#0ea5e9}.ek-concert{--k1:#f43f5e;--k2:#f59e0b}
+  .secstats{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:8px;margin:0 0 16px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+  .chips label{display:flex;align-items:center;gap:6px;background:var(--card2);border-radius:999px;padding:6px 12px;font-size:14px;cursor:pointer;margin:0}
+  .chips input{width:auto;flex:none;min-width:0}
   .tmdb{margin:26px 0 8px;padding:14px;text-align:center;color:var(--muted);font-size:12px;line-height:1.5}
   .tmdb img{height:14px;display:block;margin:0 auto 8px}
   .tmdb a{color:var(--muted)}
@@ -187,11 +197,11 @@
 
 <!-- Pantalla de entrada -->
 <div id="gate" class="gate">
-  <h1>🎬 Nuestras películas</h1>
+  <h1>📚 Nuestro registro</h1>
   <div id="gStep1">
     <label>Código del grupo</label>
     <input id="codeInput" placeholder="mínimo 6 caracteres" autocapitalize="off" autocomplete="off">
-    <div class="sub" style="margin-top:8px">Cada código es un grupo con sus propias películas. Si el código es nuevo, podrás crear el grupo.</div>
+    <div class="sub" style="margin-top:8px">Cada código es un grupo con su propio registro. Si el código es nuevo, podrás crear el grupo.</div>
     <div class="actions"><button class="btn" id="nextBtn">Continuar</button></div>
   </div>
   <div id="gStepWho" class="hidden">
@@ -211,7 +221,7 @@
 <!-- App -->
 <div id="app" class="hidden">
   <header>
-    <h1>🎬 Nuestras películas</h1>
+    <h1>📚 Nuestro registro</h1>
     <button class="btn" id="addBtn">+ Añadir</button>
     <button class="btn ghost" id="menuBtn" aria-label="Menú">☰</button>
     <div id="menu" class="menu hidden">
@@ -232,6 +242,9 @@
       <button id="whoLabel" title="Cambiar de usuario / salir"></button>
     </div>
   </header>
+  <nav class="sectabs" id="secTabs">
+    <button data-sec="movie">🎬 Películas</button><button data-sec="series">📺 Series</button><button data-sec="game">🎮 Videojuegos</button><button data-sec="concert">🎤 Conciertos</button>
+  </nav>
   <input type="file" id="restoreFile" accept=".json,application/json" class="hidden">
   <main>
     <div class="layout">
@@ -259,11 +272,21 @@
         <div id="empty" class="empty hidden"></div>
       </section>
     </div>
+    <div id="secView" class="hidden">
+      <div class="tools">
+        <input id="secQ" placeholder="Buscar…" autocomplete="off">
+        <select id="secStatus"></select><select id="secYear"></select><select id="secWho"></select>
+        <select id="secSort"><option value="recent">Añadidos recientemente</option><option value="date">Por fecha</option><option value="avg">Mejor nota media</option><option value="title">Título A-Z</option></select>
+      </div>
+      <div id="secStats" class="secstats"></div>
+      <div id="secGrid" class="grid"></div>
+      <div id="secEmpty" class="empty hidden"></div>
+    </div>
   </main>
   <footer class="tmdb">
     <a href="https://www.themoviedb.org" target="_blank" rel="noopener"><img src="https://www.themoviedb.org/assets/2/v4/logos/v2/blue_short-8e7b30f73a4020692ccca9c88bafe5dcb6f8a62a4c6bc55cd9ba82bb2cd95f6c.svg" alt="TMDB" onerror="this.outerHTML='<b>TMDB</b><br>'"></a>
     Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB.<br>
-    Datos de “dónde verla” cortesía de JustWatch.
+    Datos de “dónde verla” cortesía de JustWatch. Datos de videojuegos: <a href="https://rawg.io" target="_blank" rel="noopener">RAWG</a>.
   </footer>
 </div>
 
@@ -274,6 +297,14 @@
     <input id="searchInput" placeholder="Busca por título…" style="margin-top:10px">
     <div id="results" style="margin-top:10px"></div>
     <div class="actions"><button class="btn ghost" id="closeAdd">Cerrar</button></div>
+  </div>
+</div>
+
+<!-- Modal: añadir a un apartado -->
+<div id="entAddModal" class="overlay hidden">
+  <div class="sheet">
+    <h2 id="entAddTitle">Añadir</h2>
+    <div id="entAddBody"></div>
   </div>
 </div>
 
@@ -318,6 +349,9 @@
     <div class="block">
       <label>Persona 1</label><input id="grpN1" autocomplete="off">
       <label>Persona 2</label><input id="grpN2" autocomplete="off">
+      <label>Otras personas (una por línea)</label>
+      <textarea id="grpFriends" rows="3" placeholder="Con quien compartes juegos, series, conciertos…"></textarea>
+      <div class="sub">No necesitan usar la app: sirven para marcar con quién hiciste cada cosa.</div>
       <label>Cines sugeridos (uno por línea)</label><textarea id="grpCin" rows="5"></textarea>
     </div>
     <div class="sub" style="margin-top:8px">Cambiar un nombre no afecta a las notas ya guardadas.</div>
@@ -371,6 +405,7 @@
 
 <script type="module">
 import { firebaseConfig, TMDB_API_KEY, PEOPLE as DEFAULT_PEOPLE } from "./config.js";
+import * as CFG from "./config.js"; // para claves opcionales (RAWG_API_KEY) sin romper configs antiguas
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
 import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, onSnapshot, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
@@ -402,7 +437,10 @@ function toast(msg) {
 }
 
 let db, moviesCol, unsub = null;
-let movies = [];
+let movies = [];            // solo películas
+let allItems = [], entries = []; // todo / series, juegos y conciertos
+let FRIENDS = [];           // otras personas del grupo (no usan la app)
+let sec = "movie";          // apartado abierto
 let me = null;       // id de la persona
 let room = null;     // código
 
@@ -418,7 +456,7 @@ const fbDb = () => (db ||= getFirestore(initializeApp(firebaseConfig)));
 const metaRef = (code) => doc(fbDb(), "rooms", code, "meta", "config");
 const validCfg = (c) => c && Array.isArray(c.people) && c.people.length === 2 && c.people.every(p => p && p.id && p.name);
 
-function applyRoom(cfg) { PEOPLE = cfg.people; roomCinemas = Array.isArray(cfg.cinemas) ? cfg.cinemas : []; }
+function applyRoom(cfg) { PEOPLE = cfg.people; FRIENDS = Array.isArray(cfg.friends) ? cfg.friends.filter(f => f && f.id && f.name) : []; roomCinemas = Array.isArray(cfg.cinemas) ? cfg.cinemas : []; }
 async function loadRoom(code) {
   let snap = null;
   try { snap = await getDoc(metaRef(code)); } catch (e) { console.warn("Sin acceso a la configuración del grupo", e); }
@@ -476,8 +514,10 @@ function enter(code, who) {
   $("whoLabel").textContent = "👤 " + nameOf(me) + " · salir";
   if (unsub) unsub();
   unsub = onSnapshot(moviesCol, snap => {
-    movies = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-    render();
+    allItems = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+    movies = allItems.filter(x => !x.kind || x.kind === "movie");
+    entries = allItems.filter(x => x.kind && x.kind !== "movie");
+    render(); renderEntries();
     if (openId) renderDetail(openId);
     if (!$("upModal").classList.contains("hidden")) renderUpcoming();
     if (!$("wlModal").classList.contains("hidden")) renderWishList();
@@ -489,7 +529,7 @@ function enter(code, who) {
     if (!snap.exists() || !validCfg(snap.data())) return;
     applyRoom(snap.data());
     $("whoLabel").textContent = "👤 " + nameOf(me) + " · salir";
-    render(); if (openId) renderDetail(openId);
+    render(); renderEntries(); if (openId) renderDetail(openId);
   }, err => console.warn("Configuración del grupo no disponible", err));
 }
 
@@ -497,6 +537,7 @@ function enter(code, who) {
 $("groupBtn").onclick = () => {
   $("grpCode").textContent = room;
   $("grpN1").value = PEOPLE[0].name; $("grpN2").value = PEOPLE[1].name;
+  $("grpFriends").value = FRIENDS.map(f => f.name).join("\n");
   $("grpCin").value = [...new Set([...roomCinemas, ...movies.map(m => m.cinema).filter(Boolean)])].join("\n");
   $("groupModal").classList.remove("hidden");
 };
@@ -506,11 +547,14 @@ $("grpSave").onclick = async () => {
   const n1 = $("grpN1").value.trim(), n2 = $("grpN2").value.trim();
   if (!n1 || !n2 || n1.toLowerCase() === n2.toLowerCase()) { alert("Escribe dos nombres distintos."); return; }
   const cinemas = [...new Set($("grpCin").value.split("\n").map(x => x.trim()).filter(Boolean))];
-  const cfg = { people: [{ id: PEOPLE[0].id, name: n1 }, { id: PEOPLE[1].id, name: n2 }], cinemas };
+  const names = [...new Set($("grpFriends").value.split("\n").map(x => x.trim()).filter(Boolean))]
+    .filter(n => ![n1, n2].some(x => x.toLowerCase() === n.toLowerCase()));
+  const friends = names.map(n => FRIENDS.find(f => f.name.toLowerCase() === n.toLowerCase()) || { id: "f" + Math.random().toString(36).slice(2, 7), name: n });
+  const cfg = { people: [{ id: PEOPLE[0].id, name: n1 }, { id: PEOPLE[1].id, name: n2 }], friends, cinemas };
   try { await setDoc(metaRef(room), cfg); } catch (e) { console.error(e); alert("No se pudo guardar. ¿Están publicadas las reglas nuevas de Firebase?"); return; }
   applyRoom(cfg);
   $("whoLabel").textContent = "👤 " + nameOf(me) + " · salir";
-  render(); if (openId) renderDetail(openId);
+  render(); renderEntries(); if (openId) renderDetail(openId);
   $("groupModal").classList.add("hidden"); toast("Grupo guardado");
 };
 
@@ -721,6 +765,8 @@ function closeDetail() { openId = null; editPid = null; $("detailModal").classLi
 $("detailModal").onclick = (e) => { if (e.target === $("detailModal")) closeDetail(); };
 
 function renderDetail(id) {
+  const ent = entries.find(x => x.id === id);
+  if (ent) { renderEntryDetail(ent); return; }
   const m = movies.find(x => x.id === id);
   if (!m) { closeDetail(); return; }
   // No re-renderizar mientras alguien está escribiendo en el formulario
@@ -869,7 +915,7 @@ function renderWishDetail(m) {
 
 // ---------- Añadir (TMDB) ----------
 let t = null;
-$("addBtn").onclick = () => { $("addModal").classList.remove("hidden"); $("searchInput").focus(); };
+$("addBtn").onclick = () => { if (sec !== "movie") { openEntryAdd(); return; } $("addModal").classList.remove("hidden"); $("searchInput").focus(); };
 $("closeAdd").onclick = () => $("addModal").classList.add("hidden");
 $("addModal").onclick = (e) => { if (e.target === $("addModal")) $("addModal").classList.add("hidden"); };
 $("searchInput").oninput = () => { clearTimeout(t); t = setTimeout(search, 350); };
@@ -1151,8 +1197,8 @@ applyTheme();
 // ---------- Copia de seguridad ----------
 $("backupBtn").onclick = () => {
   const data = { app: "peliculas", version: 1, exportedAt: new Date().toISOString(),
-    movies: movies.map(({ createdAt, ...m }) => ({ ...m, createdAtSec: createdAt?.seconds ?? null })) };
-  download(`peliculas-backup-${todayStr()}.json`, JSON.stringify(data, null, 1), "application/json");
+    movies: allItems.map(({ createdAt, ...m }) => ({ ...m, createdAtSec: createdAt?.seconds ?? null })) };
+  download(`registro-backup-${todayStr()}.json`, JSON.stringify(data, null, 1), "application/json");
   toast("Copia descargada");
 };
 $("csvBtn").onclick = () => {
@@ -1172,10 +1218,10 @@ $("restoreFile").onchange = async (e) => {
   let d;
   try { d = JSON.parse(await f.text()); if (d.app !== "peliculas" || !Array.isArray(d.movies)) throw 0; }
   catch { alert("Ese archivo no es una copia válida."); return; }
-  if (!confirm(`Se restaurarán ${d.movies.length} películas (las que ya existan con el mismo id se sobrescribirán). ¿Continuar?`)) return;
+  if (!confirm(`Se restaurarán ${d.movies.length} elementos (las que ya existan con el mismo id se sobrescribirán). ¿Continuar?`)) return;
   let n = 0;
   for (const { id, createdAtSec, ...m } of d.movies) { await setDoc(doc(moviesCol, String(id)), { ...m, createdAt: serverTimestamp() }); n++; }
-  toast(`Restauradas ${n} películas`);
+  toast(`Restaurados ${n} elementos`);
 };
 
 // ---------- Instalar en el móvil (PWA) ----------
@@ -1645,6 +1691,299 @@ $("wlList").onclick = async (e) => {
   const row = e.target.closest(".wl"); if (!row) return;
   $("wlModal").classList.add("hidden"); openDetail(row.dataset.id);
 };
+
+// ======================================================================
+//  APARTADOS: series, videojuegos y conciertos
+//  Viven en la misma colección que las películas, con un campo "kind".
+//  Cada elemento tiene "with" (personas que participaron). Cada persona solo
+//  ve lo que ha creado ella o donde está marcada. (Filtro de la app: sin
+//  inicio de sesión no es una barrera de seguridad real.)
+// ======================================================================
+const RAWG_KEY = CFG.RAWG_API_KEY || "";
+const KINDS = {
+  series:  { id: "s", icon: "📺", name: "Series", one: "serie", statuses: [["watching", "Viendo"], ["pending", "Pendiente"], ["done", "Terminada"], ["dropped", "Abandonada"]] },
+  game:    { id: "g", icon: "🎮", name: "Videojuegos", one: "videojuego", statuses: [["playing", "Jugando"], ["pending", "Pendiente"], ["done", "Pasado"], ["dropped", "Abandonado"]] },
+  concert: { id: "c", icon: "🎤", name: "Conciertos", one: "concierto", statuses: [["done", "Asistido"], ["pending", "Próximo"]] },
+};
+const MV_ONLY = ["wlBtn", "upBtn", "gamesBtn", "wrapBtn", "recBtn", "importBtn", "csvBtn"];
+const allPeople = () => [...PEOPLE, ...FRIENDS];
+const pName = (id) => (allPeople().find(p => p.id === id) || {}).name || id;
+const visibleE = (e) => e.addedBy === me || (e.with || []).includes(me);
+const partsOf = (e) => [...new Set([e.addedBy, ...(e.with || [])])].filter(id => allPeople().some(p => p.id === id));
+const eDate = (e) => e.date || e.finishedOn || e.startedOn || "";
+const posterUrl = (e) => !e.poster ? "" : /^https?:/.test(e.poster) ? e.poster : IMG + "w342" + e.poster;
+const stLabel = (e) => (KINDS[e.kind].statuses.find(x => x[0] === e.status) || ["", ""])[1];
+const secF = { series: {}, game: {}, concert: {} };
+const F = () => secF[sec];
+const numOr = (v) => v === "" || v == null || isNaN(parseFloat(v)) ? null : parseFloat(v);
+
+function setSection(k) {
+  sec = k;
+  try { localStorage.setItem("peli_sec", k); } catch {}
+  document.querySelectorAll("#secTabs [data-sec]").forEach(b => b.classList.toggle("on", b.dataset.sec === k));
+  document.querySelector(".layout").classList.toggle("hidden", k !== "movie");
+  $("secView").classList.toggle("hidden", k === "movie");
+  MV_ONLY.forEach(id => $(id).classList.toggle("hidden", k !== "movie"));
+  $("addBtn").textContent = k === "movie" ? "+ Añadir" : "+ " + cap(KINDS[k].one);
+  renderEntries();
+}
+$("secTabs").onclick = (e) => { const b = e.target.closest("[data-sec]"); if (b) setSection(b.dataset.sec); };
+
+function setOpts(el, opts, val) {
+  const html = opts.map(o => `<option value="${esc(o[0])}">${esc(o[1])}</option>`).join("");
+  if (el.innerHTML !== html) el.innerHTML = html;
+  el.value = opts.some(o => o[0] === val) ? val : opts[0][0];
+}
+function renderEntries() {
+  if (sec === "movie") return;
+  const K = KINDS[sec], f = F();
+  const all = entries.filter(e => e.kind === sec && visibleE(e));
+  const years = [...new Set(all.map(e => eDate(e).slice(0, 4)).filter(Boolean))].sort().reverse();
+  setOpts($("secStatus"), [["", "Todos los estados"], ...K.statuses], f.status || "");
+  setOpts($("secYear"), [["all", "Todos los años"], ...years.map(y => [y, y]), ["none", "Sin fecha"]], f.year || "all");
+  setOpts($("secWho"), [["", "Con cualquiera"], ["solo", "Solo yo"], ...allPeople().filter(p => p.id !== me).map(p => ["w:" + p.id, "Con " + p.name])], f.who || "");
+  const sort = $("secSort").value, q = ($("secQ").value || "").trim().toLowerCase();
+  f.status = $("secStatus").value; f.year = $("secYear").value; f.who = $("secWho").value;
+  const list = all.filter(e => {
+    if (f.status && e.status !== f.status) return false;
+    if (f.year === "none" ? eDate(e) : (f.year !== "all" && !eDate(e).startsWith(f.year))) return false;
+    if (f.who === "solo" && partsOf(e).some(id => id !== me)) return false;
+    if (f.who.startsWith("w:") && !partsOf(e).includes(f.who.slice(2))) return false;
+    return !q || [e.title, e.venue, e.city, e.platform, (e.genres || []).join(" ")].join(" ").toLowerCase().includes(q);
+  }).sort((a, b) => {
+    if (sort === "title") return (a.title || "").localeCompare(b.title || "", "es");
+    if (sort === "avg") return ((avgOf(b) ?? -1) + mhN(b) * 0.01) - ((avgOf(a) ?? -1) + mhN(a) * 0.01);
+    if (sort === "date") return eDate(b).localeCompare(eDate(a));
+    return (b.createdAt?.seconds ?? 9e9) - (a.createdAt?.seconds ?? 9e9);
+  });
+
+  // estadísticas del apartado (con los filtros aplicados)
+  const rated = list.filter(e => avgOf(e) != null);
+  const tiles = [[list.length, K.name], ...(rated.length ? [["★ " + fmt(mean(rated.map(avgOf))), "Nota media"]] : [])];
+  const mh = list.filter(isMH).length; if (mh) tiles.push(["🏅 " + mh, "Matrículas de honor"]);
+  if (sec === "game") { const h = list.reduce((s, e) => s + (e.hours || 0), 0); if (h) tiles.push([Math.round(h) + " h", "Horas jugadas"]); }
+  if (sec === "series") { const n = list.filter(e => e.status === "done").length; if (n) tiles.push([n, "Terminadas"]); }
+  if (sec === "concert") { const g = list.reduce((s, e) => s + (e.price || 0), 0); if (g) tiles.push([fmtEUR(g), "Gasto en entradas"]); }
+  $("secStats").innerHTML = tiles.map(t => `<div class="tile"><b>${esc(t[0])}</b><span>${esc(t[1])}</span></div>`).join("");
+
+  $("secEmpty").classList.toggle("hidden", list.length > 0);
+  $("secEmpty").innerHTML = all.length ? "Nada con estos filtros." : `Aún no hay nada en ${K.name.toLowerCase()}.<br>Pulsa “+ ${cap(K.one)}” para empezar.`;
+  $("secGrid").innerHTML = list.map(e => {
+    const a = avgOf(e), img = posterUrl(e);
+    const cover = img ? `<img loading="lazy" src="${esc(img)}" alt="">` : `<div class="noposter ek ek-${e.kind}">${K.icon}<small>${esc(e.title)}</small></div>`;
+    const badge = isMH(e) ? `<span class="avg mhb">🏅 MH · ★ ${fmt(a)}</span>` : a != null ? `<span class="avg">★ ${fmt(a)}</span>` : `<span class="avg none">Sin nota</span>`;
+    const mini = partsOf(e).filter(id => typeof e.ratings?.[id] === "number").map(id => `${esc(pName(id))}: ${rtxt(e, id)}`).join(" · ");
+    const others = partsOf(e).filter(id => id !== me).map(pName);
+    const sub = e.kind === "concert" ? [e.venue, e.city].filter(Boolean).join(", ") : [e.year, e.platform].filter(Boolean).join(" · ");
+    const pills = [stLabel(e) && "● " + stLabel(e), eDate(e) && "📅 " + fmtDate(eDate(e)), e.progress && "▶ " + e.progress, e.hours && "⏱️ " + e.hours + " h", e.price != null && e.kind === "concert" && "💶 " + fmtEUR(e.price), others.length && "👥 " + others.join(", ")]
+      .filter(Boolean).map(t => `<span class="pill" title="${esc(t)}">${esc(t)}</span>`).join("");
+    return `<div class="card ${isMH(e) ? "mh" : ""}" data-eid="${e.id}">${cover}
+      <div class="info"><div class="t">${esc(e.title)}</div><div class="y">${esc(sub)}</div>${badge}${mini ? `<div class="mini">${mini}</div>` : ""}
+      ${pills ? `<div class="pills">${pills}</div>` : ""}</div></div>`;
+  }).join("");
+}
+["secStatus", "secYear", "secWho", "secSort"].forEach(id => $(id).onchange = renderEntries);
+$("secQ").oninput = renderEntries;
+$("secGrid").onclick = (e) => { const c = e.target.closest("[data-eid]"); if (c) openDetail(c.dataset.eid); };
+
+// ---------- Añadir ----------
+let addItem = null;
+function openEntryAdd() {
+  $("entAddTitle").textContent = "Añadir " + KINDS[sec].one;
+  addItem = { kind: sec };
+  if (sec === "concert") showEntryForm({}); else showEntrySearch();
+  openM("entAddModal");
+}
+const closeEntryAdd = () => closeM("entAddModal");
+$("entAddModal").onclick = (e) => { if (e.target === $("entAddModal")) closeEntryAdd(); };
+
+async function searchEntries(q) {
+  if (sec === "series") {
+    const d = await (await fetch(`https://api.themoviedb.org/3/search/tv?api_key=${TMDB_API_KEY}&language=es-ES&query=${encodeURIComponent(q)}`)).json();
+    return (d.results || []).slice(0, 8).map(x => ({ src: "tv:" + x.id, tmdbId: x.id, title: x.name, sub: x.original_name, year: (x.first_air_date || "").slice(0, 4), poster: x.poster_path || null, overview: x.overview || "" }));
+  }
+  const d = await (await fetch(`https://api.rawg.io/api/games?key=${RAWG_KEY}&search=${encodeURIComponent(q)}&page_size=8`)).json();
+  return (d.results || []).map(x => ({ src: "g:" + x.id, title: x.name, year: (x.released || "").slice(0, 4), poster: x.background_image || null, genres: (x.genres || []).map(g => g.name), gamePlatforms: (x.platforms || []).map(p => p.platform.name),
+    sub: (x.platforms || []).map(p => p.platform.name).slice(0, 4).join(", ") }));
+}
+function showEntrySearch() {
+  const K = KINDS[sec], noKey = sec === "game" && !RAWG_KEY;
+  $("entAddBody").innerHTML = `
+    ${noKey ? `<div class="banner" style="margin:8px 0">Para buscar juegos automáticamente añade <b>RAWG_API_KEY</b> en config.js (clave gratuita en rawg.io/apidocs). Mientras tanto puedes añadirlos a mano.</div>`
+      : `<input id="eSearch" placeholder="Busca ${K.one} por título…" style="margin-top:10px" autocomplete="off"><div id="eRes" style="margin-top:10px"></div>`}
+    <div class="actions"><button class="btn ghost" id="eManual">✍️ Añadir a mano</button><button class="btn ghost" id="eClose">Cerrar</button></div>`;
+  $("eClose").onclick = closeEntryAdd;
+  $("eManual").onclick = () => showEntryForm({});
+  if (noKey) return;
+  let t2 = null; $("eSearch").focus();
+  $("eSearch").oninput = () => {
+    clearTimeout(t2);
+    t2 = setTimeout(async () => {
+      const q = $("eSearch").value.trim(), box = $("eRes");
+      if (q.length < 2) { box.innerHTML = ""; return; }
+      try {
+        const res = await searchEntries(q); box._res = res;
+        box.innerHTML = res.length ? res.map((x, i) => `<div class="res" data-i="${i}">
+          ${x.poster ? `<img src="${esc(posterUrl(x))}" alt="">` : `<div class="np"></div>`}
+          <div class="grow"><div>${esc(x.title)}</div><div class="sub">${esc(x.year || "")}${x.sub ? " · " + esc(x.sub) : ""}</div></div></div>`).join("") : `<div class="sub">Sin resultados</div>`;
+      } catch (err) { console.warn(err); box.innerHTML = `<div class="err">Error al buscar. Revisa la clave de la API.</div>`; }
+    }, 350);
+  };
+  $("eRes").onclick = async (e) => {
+    const el = e.target.closest(".res"); if (!el) return;
+    const x = { ...$("eRes")._res[+el.dataset.i] };
+    const dup = entries.find(v => v.src === x.src && v.kind === sec && visibleE(v));
+    if (dup) { closeEntryAdd(); toast("Ya la tienes"); openDetail(dup.id); return; }
+    if (sec === "series") {
+      try {
+        const d = await (await fetch(`https://api.themoviedb.org/3/tv/${x.tmdbId}?api_key=${TMDB_API_KEY}&language=es-ES`)).json();
+        x.genres = (d.genres || []).map(g => g.name); x.seasons = d.number_of_seasons || null;
+        x.creator = (d.created_by || []).map(c => c.name).join(", ");
+        x.platform = (d.networks || [])[0]?.name || "";
+      } catch (err) { console.warn(err); }
+    }
+    showEntryForm(x);
+  };
+}
+
+const PLATS = ["PC", "PlayStation 5", "PlayStation 4", "Xbox Series", "Nintendo Switch", "Móvil"];
+function showEntryForm(x) {
+  const K = KINDS[sec], t = todayStr();
+  const defStatus = sec === "concert" ? "done" : sec === "game" ? "playing" : "watching";
+  const chips = allPeople().map(p => `<label><input type="checkbox" value="${p.id}" ${p.id === me ? "checked disabled" : ""}> ${esc(p.name)}${p.id === me ? " (tú)" : ""}</label>`).join("");
+  const kindFields = sec === "concert" ? `
+      <div class="two"><div><label>Fecha</label><input type="date" id="fDate" value="${t}"></div><div><label>Precio entrada (€)</label><input id="fPrice" type="number" min="0" step="0.01" inputmode="decimal"></div></div>
+      <div class="two"><div><label>Sala / festival</label><input id="fVenue" autocomplete="off"></div><div><label>Ciudad</label><input id="fCity" autocomplete="off"></div></div>`
+    : sec === "game" ? `
+      <div class="two"><div><label>Plataforma</label><input id="fPlat" list="platList" value="${esc((x.gamePlatforms || [])[0] || "")}" autocomplete="off"><datalist id="platList">${PLATS.map(p => `<option value="${p}">`).join("")}</datalist></div><div><label>Horas</label><input id="fHours" type="number" min="0" step="0.5" inputmode="decimal"></div></div>
+      <label>Empezado el</label><input type="date" id="fStart" value="${t}">`
+    : `
+      <div class="two"><div><label>Plataforma</label><input id="fPlat" value="${esc(x.platform || "")}" placeholder="Netflix, HBO…" autocomplete="off"></div><div><label>Progreso</label><input id="fProg" placeholder="T1 E3" autocomplete="off"></div></div>
+      <label>Empezada el</label><input type="date" id="fStart" value="${t}">`;
+  $("entAddBody").innerHTML = `
+    <div class="row" style="margin-top:8px">${x.poster ? `<img src="${esc(posterUrl(x))}" alt="" style="width:70px;border-radius:8px">` : ""}
+      <div style="flex:1"><label>${sec === "concert" ? "Artista o evento" : "Título"}</label><input id="fTitle" value="${esc(x.title || "")}" autocomplete="off"></div></div>
+    <label>Estado</label><select id="fStatus">${K.statuses.map(s => `<option value="${s[0]}" ${s[0] === defStatus ? "selected" : ""}>${s[1]}</option>`).join("")}</select>
+    ${kindFields}
+    <label>¿Con quién?</label><div class="chips" id="fWith">${chips}</div>
+    <div class="actions"><button class="btn ghost" id="fBack">${sec === "concert" ? "Cerrar" : "Atrás"}</button><button class="btn" id="fSave">Guardar</button></div>`;
+  $("fBack").onclick = sec === "concert" ? closeEntryAdd : showEntrySearch;
+  $("fSave").onclick = async () => {
+    const title = $("fTitle").value.trim();
+    if (!title) { alert("Pon un título."); return; }
+    const withIds = [me, ...[...document.querySelectorAll("#fWith input:checked:not(:disabled)")].map(i => i.value)];
+    const base = {
+      kind: sec, title, status: $("fStatus").value, poster: x.poster || null, year: x.year || null, genres: x.genres || [], overview: x.overview || "",
+      src: x.src || null, addedBy: me, with: withIds, ratings: {}, mh: {}, comments: {}, createdAt: serverTimestamp(),
+    };
+    const extra = sec === "concert" ? { date: $("fDate").value || null, price: numOr($("fPrice").value), venue: $("fVenue").value.trim() || null, city: $("fCity").value.trim() || null, year: ($("fDate").value || "").slice(0, 4) || null }
+      : sec === "game" ? { platform: $("fPlat").value.trim() || null, hours: numOr($("fHours").value), startedOn: $("fStart").value || null, finishedOn: null, gamePlatforms: x.gamePlatforms || [] }
+      : { platform: $("fPlat").value.trim() || null, progress: $("fProg").value.trim() || null, startedOn: $("fStart").value || null, finishedOn: null, seasons: x.seasons || null, creator: x.creator || null };
+    const id = K.id + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+    $("fSave").disabled = true;
+    try { await setDoc(doc(moviesCol, id), { ...base, ...extra }); }
+    catch (err) { console.error(err); alert("No se pudo guardar."); $("fSave").disabled = false; return; }
+    closeEntryAdd(); toast("Guardado"); openDetail(id);
+  };
+}
+
+// ---------- Ficha ----------
+function renderEntryDetail(e) {
+  const ae = document.activeElement;
+  if (ae && $("detailSheet").contains(ae) && /INPUT|TEXTAREA|SELECT/.test(ae.tagName)) return;
+  if (!visibleE(e)) { closeDetail(); return; }
+  const K = KINDS[e.kind], a = avgOf(e), parts = partsOf(e), id = e.id;
+  const target = allPeople().some(p => p.id === editPid) ? editPid : me;
+  const tName = pName(target), forOther = target !== me;
+  const myRating = e.ratings?.[target] ?? 5;
+  const img = posterUrl(e);
+  const others = parts.filter(pid => pid !== target).map(pid => {
+    const by = e.ratedBy?.[pid];
+    const note = by && by !== pid ? ` <small class="sub">· nota puesta por ${esc(pName(by))}</small>` : "";
+    return `<div class="block"><h3>${esc(pName(pid))}${pid === me ? " (tú)" : ""}: ${mhOf(e, pid) ? "🏅 Matrícula de honor" : "★ " + fmt(e.ratings?.[pid])}${note}</h3>
+      <div class="overview" style="margin:0">${esc(e.comments?.[pid] || "Sin comentario")}</div>
+      <div class="actions"><button class="btn ghost" data-edit="${pid}">✏️ ${pid === me ? "Editar mi nota" : (typeof e.ratings?.[pid] === "number" ? "Modificar" : "Poner") + " la nota de " + esc(pName(pid))}</button></div></div>`;
+  }).join("");
+  const sel = `<label>Estado</label><select id="eStatus">${K.statuses.map(s => `<option value="${s[0]}" ${s[0] === e.status ? "selected" : ""}>${s[1]}</option>`).join("")}</select>`;
+  const fields = e.kind === "concert" ? `${sel}
+      <div class="two"><div><label>Fecha</label><input type="date" id="eDate" value="${esc(e.date || "")}"></div><div><label>Precio entrada (€)</label><input id="ePrice" type="number" min="0" step="0.01" inputmode="decimal" value="${e.price ?? ""}"></div></div>
+      <div class="two"><div><label>Sala / festival</label><input id="eVenue" value="${esc(e.venue || "")}"></div><div><label>Ciudad</label><input id="eCity" value="${esc(e.city || "")}"></div></div>`
+    : e.kind === "game" ? `${sel}
+      <div class="two"><div><label>Plataforma</label><input id="ePlat" list="platList" value="${esc(e.platform || "")}"><datalist id="platList">${PLATS.map(p => `<option value="${p}">`).join("")}</datalist></div><div><label>Horas</label><input id="eHours" type="number" min="0" step="0.5" inputmode="decimal" value="${e.hours ?? ""}"></div></div>
+      <div class="two"><div><label>Empezado</label><input type="date" id="eStart" value="${esc(e.startedOn || "")}"></div><div><label>Terminado</label><input type="date" id="eEnd" value="${esc(e.finishedOn || "")}"></div></div>`
+    : `${sel}
+      <div class="two"><div><label>Plataforma</label><input id="ePlat" value="${esc(e.platform || "")}"></div><div><label>Progreso</label><input id="eProg" placeholder="T1 E3" value="${esc(e.progress || "")}"></div></div>
+      <div class="two"><div><label>Empezada</label><input type="date" id="eStart" value="${esc(e.startedOn || "")}"></div><div><label>Terminada</label><input type="date" id="eEnd" value="${esc(e.finishedOn || "")}"></div></div>`;
+  const chips = allPeople().map(p => `<label><input type="checkbox" value="${p.id}" ${parts.includes(p.id) ? "checked" : ""} ${p.id === e.addedBy || p.id === me ? "disabled" : ""}> ${esc(p.name)}</label>`).join("");
+  const meta = [e.year && `<div><b>Año:</b> ${esc(e.year)}</div>`, e.genres?.length && `<div><b>Género:</b> ${esc(e.genres.join(", "))}</div>`, e.creator && `<div><b>Creador:</b> ${esc(e.creator)}</div>`, e.seasons && `<div><b>Temporadas:</b> ${e.seasons}</div>`].filter(Boolean).join("");
+
+  $("detailSheet").innerHTML = `
+    <div class="row">
+      ${img ? `<img src="${esc(img)}" alt="">` : ""}
+      <div><h2>${esc(e.title)}</h2><div class="y" style="color:var(--muted)">${K.icon} ${K.one[0].toUpperCase() + K.one.slice(1)}</div>
+      <span class="avg ${isMH(e) ? "mhb" : a == null ? "none" : ""}">${isMH(e) ? "🏅 MH · " : ""}Media ★ ${fmt(a)}</span>
+      <div class="meta">${meta}</div></div>
+    </div>
+    ${isMH(e) ? `<div class="mhban">🏅 MATRÍCULA DE HONOR 🏅<br><small>${parts.filter(p => mhOf(e, p)).map(p => esc(pName(p))).join(" y ")}</small></div>` : ""}
+    ${e.overview ? `<div class="overview">${esc(e.overview)}</div>` : ""}
+    <div class="block"><h3>📋 Datos</h3>${fields}
+      <label>Con quién</label><div class="chips" id="eWith">${chips}</div>
+      <div class="actions"><button class="btn" id="eSave">Guardar datos</button></div></div>
+
+    <div class="block mine"><h3>${forOther ? `Nota de ${esc(tName)} <small class="sub">· la pones tú</small>` : `Tu nota (${esc(tName)})`}</h3>
+      ${forOther ? `<div class="banner" style="margin:0 0 10px">✋ Estás poniendo la nota de ${esc(tName)} en su nombre. Se te pedirá confirmación al guardar.</div>` : ""}
+      <div class="rate"><button class="nudge" id="rMinus" type="button">−</button>
+      <input type="range" id="myRating" min="0" max="10" step="0.1" value="${myRating}">
+      <button class="nudge" id="rPlus" type="button">+</button>
+      <span class="val" id="myVal">${fmt(e.ratings?.[target])}</span></div>
+      <button class="mhbtn ${mhOf(e, target) ? "on" : ""}" id="mhBtn" type="button">🏅 MATRÍCULA DE HONOR (MH)</button>
+      <textarea id="myComment" rows="3" placeholder="${forOther ? "Comentario de " + esc(tName) + " (opcional)…" : "Tu comentario…"}" style="margin-top:10px">${esc(e.comments?.[target] || "")}</textarea>
+      <div class="actions"><button class="btn" id="saveMine">${forOther ? "Guardar la nota de " + esc(tName) : "Guardar mi nota"}</button>${forOther ? `<button class="btn ghost" id="cancelOther">Cancelar</button>` : ""}</div>
+    </div>
+    ${others}
+    <div class="actions">${e.addedBy === me ? `<button class="btn danger" id="delBtn">Eliminar</button>` : `<button class="btn danger" id="delBtn">Quitarme de esta ficha</button>`}<button class="btn ghost" id="closeDetail">Cerrar</button></div>`;
+
+  const r = $("myRating"), v = $("myVal");
+  let mhOn = mhOf(e, target);
+  const paintRate = () => { r.disabled = mhOn; $("rMinus").disabled = mhOn; $("rPlus").disabled = mhOn; $("mhBtn").classList.toggle("on", mhOn); v.textContent = mhOn ? "MH" : fmt(parseFloat(r.value)); };
+  const nudge = (d) => { r.value = Math.min(10, Math.max(0, Math.round((parseFloat(r.value) + d) * 10) / 10)); paintRate(); };
+  r.oninput = paintRate; $("rMinus").onclick = () => nudge(-0.1); $("rPlus").onclick = () => nudge(0.1);
+  $("mhBtn").onclick = () => { mhOn = !mhOn; if (mhOn) r.value = 10; paintRate(); };
+  paintRate();
+  $("closeDetail").onclick = closeDetail;
+  document.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => { editPid = b.dataset.edit === me ? null : b.dataset.edit; renderDetail(id); });
+  if ($("cancelOther")) $("cancelOther").onclick = () => { editPid = null; renderDetail(id); };
+
+  $("eSave").onclick = async () => {
+    const withIds = [...new Set([e.addedBy, me, ...[...document.querySelectorAll("#eWith input:checked")].map(i => i.value)])];
+    const g = (k) => $(k)?.value ?? "";
+    const upd = e.kind === "concert"
+      ? { date: g("eDate") || null, price: numOr(g("ePrice")), venue: g("eVenue").trim() || null, city: g("eCity").trim() || null, year: g("eDate").slice(0, 4) || e.year || null }
+      : e.kind === "game"
+        ? { platform: g("ePlat").trim() || null, hours: numOr(g("eHours")), startedOn: g("eStart") || null, finishedOn: g("eEnd") || null }
+        : { platform: g("ePlat").trim() || null, progress: g("eProg").trim() || null, startedOn: g("eStart") || null, finishedOn: g("eEnd") || null };
+    await updateDoc(doc(moviesCol, id), { ...upd, status: g("eStatus"), with: withIds });
+    toast("Datos guardados");
+  };
+  $("saveMine").onclick = async () => {
+    const val = mhOn ? 10 : Math.round(parseFloat(r.value) * 10) / 10;
+    if (forOther) {
+      const had = typeof e.ratings?.[target] === "number";
+      const txt = mhOn ? "una matrícula de honor 🏅" : "un " + fmt(val);
+      if (!confirm(`¿Seguro que quieres ${had ? "modificar" : "añadir"} la nota de ${tName}?\n\n“${e.title}”: ${had ? "pasará de " + (mhOf(e, target) ? "MH" : fmt(e.ratings[target])) + " a " : "se pondrá "}${txt}, a nombre de ${tName}.`)) return;
+    }
+    await updateDoc(doc(moviesCol, id), { [`ratings.${target}`]: val, [`mh.${target}`]: mhOn, [`comments.${target}`]: $("myComment").value.trim(), [`ratedBy.${target}`]: me });
+    toast(forOther ? `Nota de ${tName} guardada` : "Nota guardada");
+    if (forOther) { editPid = null; renderDetail(id); }
+  };
+  $("delBtn").onclick = async () => {
+    if (e.addedBy === me) { if (confirm(`¿Eliminar “${e.title}”? Se borra para todas las personas de la ficha.`)) { await deleteDoc(doc(moviesCol, id)); closeDetail(); } }
+    else if (confirm(`¿Quitarte de “${e.title}”? Dejarás de verla.`)) { await updateDoc(doc(moviesCol, id), { with: (e.with || []).filter(x => x !== me) }); closeDetail(); }
+  };
+}
+
+// Al entrar: recordar el último apartado
+setSection(["movie", "series", "game", "concert"].includes(localStorage.getItem("peli_sec")) ? localStorage.getItem("peli_sec") : "movie");
 </script>
 </body>
 </html>
