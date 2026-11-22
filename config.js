@@ -15,6 +15,7 @@ export const firebaseConfig = {
 
 // 2) Clave de TMDB (themoviedb.org > Ajustes > API). Usa la "API Key (v3 auth)".
 export const TMDB_API_KEY = "5793f1f126b1df9d56e2a3b5fc417d55";
+export const RAWG_API_KEY = "66ac0e3794b3463ba986f5b9ffd8d0c7";
 
 // 3) Los dos nombres que aparecerán al entrar. Cambia "name" a vuestros nombres.
 //    No cambies los "id" una vez que empecéis a guardar notas.
